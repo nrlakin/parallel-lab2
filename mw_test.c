@@ -9,6 +9,7 @@
 #include <mpi.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 #include "mw_api.h"
 
 // Must be less than max int!
@@ -90,27 +91,92 @@ struct dot_work_t **create_jobs (int argc, char **argv) {
   return job_queue;
 }
 
+int serialize_job(struct dot_work_t *start_job, int n_jobs, double *array, int *len) {
+  int i, length=0;
+  void *destPtr;
+  long job_len;
+  struct dot_work_t *job = start_job;
+
+  for(i = 0; i < n_jobs; i++) {
+    if(job == NULL)break;
+    length += (sizeof(double) * job->length) + sizeof(long);
+    job++;
+  }
+  if (NULL == (array = (double*)malloc(sizeof(double) * length))) {
+    printf ("malloc failed on send buffer...");
+    return 0;
+  };
+  *len = length;
+  job = start_job;
+  destPtr = array;
+  for(i = 0; i < n_jobs; i++) {
+    if(job == NULL) break;
+    job_len = job->length;
+    destPtr = memcpy(destPtr, &job_len, sizeof(long));
+    destPtr += sizeof(long);
+    destPtr = memcpy(destPtr, job->vector, sizeof(double) * job->length);
+    destPtr += sizeof(double) * job->length;
+    job++;
+  }
+  return 1;
+}
+
+int serialize_job(struct dot_work_t *start_job, int n_jobs, double *array, int *len) {
+int serialize_result(struct dot_result_t *start_result, int n_results, double *array, int *len) {
+  struct dot_result_t *result = start_result;
+  int i, length=0;
+  double *destPtr;
+
+  for(i = 0; i < n_results; i++) {
+    if(result == NULL)break;
+    length += sizeof(double);
+    result++;
+  }
+  if (NULL == (array = (double*)malloc(sizeof(double) * length))) {
+    printf ("malloc failed on send buffer...");
+    return 0;
+  };
+  *len = length;
+  result = start_result;
+  destPtr = array;
+  for(i = 0; i < n_results; i++) {
+    if(result == NULL)break;
+    *destPtr++ = result->product;
+    result++;
+  }
+  return 0;
+}
+
 int dot_product_result (int sz, struct dot_result_t *res) {
   double dot_product = 0;
+  int i;
+
   for(i=0; i<sz; i++) {
     if (res == NULL)return 0;     // early termination
     dot_product += res->product;
     res++;
   }
   if (res != NULL)return 0;
-  printf("Dot product: %d", dot_product);
+  printf("Dot product: %f\n", dot_product);
   return 1;
 }
 
 struct dot_result_t *compute_dot (struct dot_work_t *work) {
   struct dot_result_t *result;
   int i;
-  if (NULL == (result = (struct dot_result_t*)malloc(sizeof(struct dot_result_t))) {
+  if (NULL == (result = (struct dot_result_t*)malloc(sizeof(struct dot_result_t)))) {
     printf ("malloc failed on compute_dot...");
     return NULL;
   };
   result->product = norm(work->vector, work->length);
   return result;
+}
+
+int cleanup(struct dot_work_t **work) {
+  free(work[0]->vector);
+  free(work[0]);
+  free(work);
+  return 1;
 }
 
 int main(int argc, char **argv) {
@@ -121,6 +187,7 @@ int main(int argc, char **argv) {
   f.create = create_jobs;
   f.result = dot_product_result;
   f.compute = compute_dot;
+  f.cleanup = cleanup;
   f.work_sz = sizeof(struct dot_work_t);
   f.res_sz = sizeof(struct dot_result_t);
 

@@ -17,7 +17,7 @@ struct mw_api_spec {
   int (*result) (int sz, mw_result_t *res);
   mw_result_t *(*compute) (mw_work_t *work);
   int work_sz, res_sz;
-}
+};
 
 void MW_Run(int argc, char **argv, struct mw_api_spec *f);
 

@@ -13,8 +13,8 @@
 #include "mw_api.h"
 
 // Must be less than max int!
-#define VECTOR_LENGTH 100000000
-#define N_JOBS  1000
+#define VECTOR_LENGTH 1000000000
+#define N_JOBS  10000
 //#define VECTOR_LENGTH 5
 
 /***
@@ -185,7 +185,7 @@ int deserialize_results(struct userdef_result_t **queue, unsigned char *array, i
       printf ("malloc failed on receive buffer...\n");
       return 0;
     };
-    memcpy((unsigned char*)&(resultPtr->product), srcPtr, sizeof(double));
+    memcpy(&(resultPtr->product), srcPtr, sizeof(double));
     srcPtr += sizeof(double);
     *queue++ = resultPtr;
     len-=sizeof(double);
@@ -219,10 +219,11 @@ struct userdef_result_t *compute_dot (struct userdef_work_t *work) {
   return result;
 }
 
-int cleanup(struct userdef_work_t **work) {
+int cleanup(struct userdef_work_t **work, struct userdef_result_t **results) {
   free(work[0]->vector);
   free(work[0]);
   free(work);
+  while(*results != NULL) free(*results++);
   return 1;
 }
 
@@ -252,59 +253,4 @@ int main(int argc, char **argv) {
   MPI_Finalize();
 
   return 0;
-  /*
-  int n_proc, rank, i, chunk_size, msg_len, tag=1;
-  MPI_Status status;
-  double *vector;
-  double result, start, end;
-
-  MPI_Init(&argc, &argv);
-  MPI_Comm_size (MPI_COMM_WORLD, &n_proc);
-  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-
-  // Initialize vector (process 0 only)
-
-
-  // Start Timer
-    start = MPI_Wtime();
-
-
-  }   // end 'if rank==0'
-
-  // Calc dot product of subvector and send result
-  if (rank == 0) {
-    double sub_result;
-    long ops;
-    result = norm(vector, chunk_size);
-    free(vector);
-    for (i = 1; i < n_proc; i++) {
-      MPI_Recv(&sub_result, 1, MPI_DOUBLE, i, tag, MPI_COMM_WORLD, &status);
-      result += sub_result;
-    }
-    //Stop Timer
-    end = MPI_Wtime();
-    ops = ((long)VectorLength) * 2;
-    printf("Dot product = %f\n", result);
-    printf("%f seconds elapsed.\n", end-start);
-    printf("%ld operations completed.\n", ops);
-    printf("%e seconds/operation.\n", (end-start)/((double)ops));
-
-  } else {
-    // Process subvector.
-    MPI_Probe(0, tag, MPI_COMM_WORLD, &status);
-    MPI_Get_count(&status, MPI_DOUBLE, &msg_len);
-    //printf("Process %d received vector of len %d.\n", rank, msg_len);
-    if (NULL == (vector = (double*) malloc(sizeof(double) * msg_len))) {
-      printf("malloc failed on process %d...", rank);
-    };
-    MPI_Recv(vector, msg_len, MPI_DOUBLE, 0, tag, MPI_COMM_WORLD, &status);
-    result = norm(vector, msg_len);
-    MPI_Send(&result, 1, MPI_DOUBLE, 0, tag, MPI_COMM_WORLD);
-    free(vector);
-  }
-
-  MPI_Finalize();
-
-  exit(0);
-  */
 }

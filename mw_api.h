@@ -16,7 +16,7 @@ struct mw_api_spec {
   mw_work_t **(*create) (int argc, char **argv);
   int (*result) (mw_result_t **res);
   mw_result_t *(*compute) (mw_work_t *work);
-  int (*cleanup) (mw_work_t **work);
+  int (*cleanup) (mw_work_t **work, mw_result_t **results);
   int (*serialize_work) (mw_work_t **start_job, int n_jobs, unsigned char **array, int *len);
   int (*deserialize_work) (mw_work_t **queue, unsigned char *array, int len);
   int (*serialize_results) (mw_result_t **start_result, int n_results, unsigned char **array, int *len);

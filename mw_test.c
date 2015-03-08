@@ -59,15 +59,15 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
   struct userdef_work_t *jobs;
 
   if (NULL == (vector = (double*)malloc(sizeof(double) * VectorLength))) {
-    printf ("malloc failed on allocating vector...");
+    printf ("malloc failed on allocating vector...\n");
     return NULL;
   };
   if (NULL == (jobs = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t) * N_JOBS))) {
-    printf ("malloc failed on allocating jobs...");
+    printf ("malloc failed on allocating jobs...\n");
     return NULL;
   };
   if (NULL == (job_queue = (struct userdef_work_t**)malloc(sizeof(struct userdef_work_t*) * N_JOBS + 1))) {
-    printf ("malloc failed on allocating job queue...");
+    printf ("malloc failed on allocating job queue...\n");
     return NULL;
   };
 
@@ -94,9 +94,9 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
   return job_queue;
 }
 
-int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, double **array, int *len) {
+int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char **array, int *len) {
   int i, length=0;
-  void *destPtr;
+  unsigned char *destPtr;
   long job_len;
   struct userdef_work_t **job = start_job;
 
@@ -105,8 +105,8 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, double **array
     length += (sizeof(double) * (*job)->length) + sizeof(long);
     job++;
   }
-  if (NULL == (*array = (double*)malloc(sizeof(double) * length))) {
-    printf ("malloc failed on send buffer...");
+  if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
+    printf ("malloc failed on send buffer...\n");
     return 0;
   };
   *len = length;
@@ -124,40 +124,44 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, double **array
   return 1;
 }
 
-int deserialize_jobs(struct userdef_work_t **queue, double *array, int len) {
+int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int len) {
   struct userdef_work_t *jobPtr;
-  long *lengthPtr = array;
-  double *srcPtr = ++array;
+  unsigned char *srcPtr = array;
+  long templong;
   while (NULL != *queue)queue++;
   while(len) {
     if (NULL == (jobPtr = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t)))) {
-      printf ("malloc failed on receive buffer...");
+      printf ("malloc failed on alloc job struct...\n");
       return 0;
     };
-    jobPtr->length = *lengthPtr;
-    jobPtr->vector = srcPtr;
+    memcpy(&templong, srcPtr, sizeof(long));
+    srcPtr += sizeof(long);
+    jobPtr->length = templong;
+    if (NULL == ((jobPtr->vector) = (double*)malloc(sizeof(double) * jobPtr->length))) {
+      printf ("malloc failed on allocating vector of len %d\n...", jobPtr->length);
+      return 0;
+    };
+    memcpy(jobPtr->vector, srcPtr, jobPtr->length * sizeof(double));
+    srcPtr += jobPtr->length * sizeof(double);
     *queue++ = jobPtr;
-    srcPtr += jobPtr->length;
-    lengthPtr = srcPtr;
-    srcPtr++;
     len-=(jobPtr->length * sizeof(double)) + sizeof(long);
   }
   *queue = NULL;
   return 1;
 }
 
-int serialize_results(struct userdef_result_t **start_result, int n_results, double **array, int *len) {
+int serialize_results(struct userdef_result_t **start_result, int n_results, unsigned char **array, int *len) {
   struct userdef_result_t **result = start_result;
   int i, length=0;
-  double *destPtr;
+  unsigned char *destPtr;
 
   for(i = 0; i < n_results; i++) {
     if(*result == NULL)break;
-    length += sizeof(struct userdef_result_t);
+    length += sizeof(double);
     result++;
   }
-  if (NULL == (*array = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t) * length))) {
-    printf ("malloc failed on send buffer...");
+  if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
+    printf ("malloc failed on send buffer...\n");
     return 0;
   };
   *len = length;
@@ -165,24 +169,25 @@ int serialize_results(struct userdef_result_t **start_result, int n_results, dou
   destPtr = *array;
   for(i = 0; i < n_results; i++) {
     if(*result == NULL) break;
-    *destPtr++ = (*result)->product;
+    memcpy(destPtr, &((*result)->product), sizeof(double));
+    destPtr += sizeof(double);
     result++;
   }
   return 0;
 }
 
-int deserialize_results(struct userdef_result_t **queue, double *array, int len) {
+int deserialize_results(struct userdef_result_t **queue, unsigned char *array, int len) {
   struct userdef_result_t *resultPtr;
-  double *srcPtr = array;
+  unsigned char *srcPtr = array;
   while (NULL != *queue)queue++;
   while(len) {
     if (NULL == (resultPtr = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t)))) {
-      printf ("malloc failed on receive buffer...");
+      printf ("malloc failed on receive buffer...\n");
       return 0;
     };
-    resultPtr->product = *srcPtr;
+    memcpy((unsigned char*)&(resultPtr->product), srcPtr, sizeof(double));
+    srcPtr += sizeof(double);
     *queue++ = resultPtr;
-    srcPtr++;
     len-=sizeof(double);
   }
   *queue = NULL;
@@ -208,9 +213,9 @@ struct userdef_result_t *compute_dot (struct userdef_work_t *work) {
     printf ("malloc failed on compute_dot...");
     return NULL;
   };
-  //printf("Worker got job:\n");
-  //printVector(work->vector, work->length);
+  printVector(work->vector, work->length);
   result->product = norm(work->vector, work->length);
+  free(work->vector);
   return result;
 }
 

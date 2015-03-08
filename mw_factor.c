@@ -14,19 +14,26 @@
 #include <gmp.h>
 
 // Must be less than max int!
-#define START_NUM "10000000"
-#define N_JOBS  10
+#define START_NUM "10000"
+#define N_JOBS  4
+
+void printFactors(unsigned long * vec, unsigned long len) {
+  int i;
+  printf("Printing Vector:\n");
+  for (i=0; i<len; i++) {
+    printf("%lu: %lu\n", i, *vec++);
+  }
+}
 
 struct userdef_work_t {
   mpz_t target;
-  mpz_t rangeStart;
-  mpz_t rangeEnd;
+  unsigned long rangeStart;
+  unsigned long rangeEnd;
 };
 
-// be sure to include number it multiplies with when gathering factors
 struct userdef_result_t {
-  int length;
-  mpz_t *factors;
+  unsigned long length;
+  unsigned long *factors;
 };
 
 struct userdef_work_t **create_jobs(int argc, char **argv) {
@@ -44,167 +51,110 @@ struct userdef_work_t **create_jobs(int argc, char **argv) {
   }
 
   int i;
+  unsigned long root_ul, chunk_size_ul;
   mpz_t n, root, chunk_size;
 
+  // need to clear n
   mpz_init_set_str(n, START_NUM, 10);
   mpz_init(root);
   mpz_init(chunk_size);
   mpz_sqrt(root, n);
   mpz_tdiv_q_ui(chunk_size, root, N_JOBS);
+  // at most root can be max_ul-1
+  root_ul = mpz_get_ui(root);
+  chunk_size_ul = mpz_get_ui(chunk_size);
 
-  // need to skip 0,1 somewhere
   for (i = 0; i < N_JOBS; i++) {
     mpz_init_set(jobs[i].target, n);
-    mpz_init(jobs[i].rangeStart);
-    mpz_mul_si(jobs[i].rangeStart, chunk_size, i);
-    mpz_init(jobs[i].rangeEnd);
+    jobs[i].rangeStart = chunk_size_ul * i;
     if (i == N_JOBS-1) {
-      mpz_set(jobs[i].rangeEnd, root+1);
+      jobs[i].rangeEnd = root_ul + 1;
     } else {
-      mpz_mul_si(jobs[i].rangeEnd, chunk_size, i+1);
+      jobs[i].rangeEnd = (chunk_size_ul * (i+1));
     }
     job_queue[i] = &(jobs[i]);
+    printf("Start: %lu\n", jobs[i].rangeStart);
+    printf("End: %lu\n", jobs[i].rangeEnd);
+    printf("Chunk: %lu\n", chunk_size_ul);
   }
   job_queue[i] = NULL;
+
+  mpz_clear(root);
+  mpz_clear(chunk_size);
   return job_queue;
 }
 
-int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, double **array, int *len) {
-  int i, length = 0;
-  void *destPtr;
-  struct userdef_work_t **job = start_job;
-  long job_len;
-
-  for (i = 0; i < n_jobs; i++) {
-    if (*job == NULL) break;
-    // is this right? or 3*sizeof(mpz_t)
-    length += (sizeof(struct userdef_work_t));
-    job++;
-  }
-  // don't we just allocate bytes??
-  if (NULL == (*array = (double*)malloc(sizeof(double) * length))) {
-    printf("malloc failed on send buffer...");
-    return 0;
-  }
-  *len = length;
-  job = start_job;
-  destPtr = *array;
-  for (i = 0; i < n_jobs; i++) {
-    if (*job == NULL) break;
-    job_len = (*job)->length;
-    destPtr = memcpy(destPtr, &job_len, sizeof(long));
-    destPtr += sizeof(long);
-    destPtr = memcpy(destPtr, (*job)->vector, sizeof(double) * (*job)->length);
-    destPtr += sizeof(double) * (*job)->length;
-    job++;
-  }
-  return 1;
-}
-
-int deserialize_jobs(struct userdef_work_t **queue, double *array, int len) {
-  struct userdef_work_t *jobPtr;
-  long *lengthPtr = array;
-  double *srcPtr = ++array;
-  while (NULL != *queue)queue++;
-  while (len) {
-    if (NULL == (jobPtr = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t)))) {
-      printf("malloc failed on receive buffer...");
-      return 0;
-    }
-    jobPtr->length = *lengthPtr;
-    jobPtr->vector = srcPtr;
-    *queue++ = jobPtr;
-    srcPtr += jobPtr->length;
-    lengthPtr = srcPtr;
-    srcPtr++;
-    len -= (jobPtr->length * sizeof(double)) + sizeof(long);
-  }
-  *queue = NULL;
-  return 1;
-}
-
-int serialize_results(struct userdef_result_t **start_result, int n_results, double **array, int *len) {
-  struct userdef_result_t **result = start_result;
-  int i, length = 0;
-  double *destPtr;
-
-  for (i = 0; i < n_results; i++) {
-    if (*result == NULL) break;
-    length += sizeof(double);
-    result++;
-  }
-  if (NULL == (*array = (double*)malloc(sizeof(double) * length))) {
-    printf("malloc failed on send buffer...");
-    return 0;
-  }
-  *len = length;
-  result = start_result;
-  destPtr = *array;
-  for (i = 0; i < n_results; i++) {
-    if (*result == NULL) break;
-    *destPtr++ = (*result)->product;
-    result++;
-  }
-  return 0;
-}
-
-int deserialize_results(struct userdef_result_t **queue, double *array, int len) {
-  struct userdef_result_t *resultPtr;
-  double *srcPtr = array;
-  while (NULL != *queue)queue++;
-  while (len) {
-    if (NULL == (resultPtr = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t)))) {
-      printf("malloc failed on receive buffer...");
-      return 0;
-    }
-    resultPtr->product = *srcPtr;
-    *queue++ = resultPtr;
-    srcPtr++;
-    len -= sizeof(double);
-  }
-  *queue = NULL;
-  return 1;
-}
-
 int userdef_result(struct userdef_result_t **res) {
-  double dot_product = 0;
-  int i;
-
-  while (*res != NULL) {
-    dot_product += (*res)->product;
+  printf("Received Results:\n");
+  while(*res != NULL) {
+    printFactors((*res)->factors, (*res)->length);
     res++;
   }
-  printf("Dot product: %f\n", dot_product);
   return 1;
+}
+
+unsigned long getFactorLength(mpz_t target, unsigned long start, unsigned long end) {
+  unsigned long length = 0;
+  mpz_t mod;
+  unsigned long current;
+  mpz_init(mod);
+  for (current = start; current < end; current++) {
+    if (!(current == 0) && !(current == 1)) {
+      mpz_mod_ui(mod, target, current);
+      if (mpz_cmp_ui(mod, 0) == 0) {
+        length += 2;
+      }
+    }
+  }
+  mpz_clear(mod);
+  printf("Length: %lu\n", length);
+  return length;
+}
+
+unsigned long *getFactors(mpz_t target, unsigned long start, unsigned long end, unsigned long length) {
+  int count = 0;
+  unsigned long current;
+  unsigned long *factors;
+  mpz_t mod, factor;
+  mpz_init(mod);
+  mpz_init(factor);
+  if (NULL == (factors = (unsigned long*)malloc(sizeof(unsigned long) * length))) {
+    printf ("malloc failed on allocating factors array...");
+    return NULL;
+  };
+
+  for (current = start; current < end; current++) {
+    if (!(current == 0) && !(current == 1)) {
+      mpz_mod_ui(mod, target, current);
+      if (mpz_cmp_ui(mod, 0) == 0) {
+        factors[count++] = current;
+        mpz_tdiv_q_ui(factor, target, current);
+        factors[count++] = mpz_get_ui(factor);
+      }
+    }
+  }
+  mpz_clear(mod);
+  mpz_clear(factor);
+  return factors;
 }
 
 struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   struct userdef_result_t *result;
-  int i;
-  if (NULL == (result = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t)))) {
-    printf("malloc failed on userdef_compute...");
+  unsigned long length = getFactorLength(work->target, work->rangeStart, work->rangeEnd);
+  if (NULL == (result = (unsigned long*)malloc(sizeof(unsigned long) * (length + 1)))) {
+    printf("malloc failed on userdef_result...");
     return NULL;
   }
   printf("Worker got job:\n");
-  result->product = norm(work->vector, work->length);
+  result->length = length;
+  printf("Length: %lu\n", result->length);
+  result->factors = getFactors(work->target, work->rangeStart, work->rangeEnd, result->length);
+  // printFactors(result->factors, result->length);
   return result;
 }
 
-double factors(mpz_t target, mpz_t start, mpz_t) {
-  mpz_t mod, current, factor;
-  mpz_init(mod);
-  mpz_init(factor);
-  for (mpz_init_set(current, start); mpz_cmp(current, stop) < 0; mpz_add_ui(current, current, 1)) {
-    mpz_mod(mod, target, current);
-    if (mpz_cmp_ui(mod, 0) == 0) {
-      mpz_tdiv_q(factor, target, current);
-      // add factor and mod to some data structure
-    }
-  }
-  // return data structure
-}
-
 int cleanup(struct userdef_work_t **work) {
+  mpz_clear(work[0]->target);
   free(work[0]);
   free(work);
   return 1;

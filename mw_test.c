@@ -153,10 +153,10 @@ int serialize_results(struct userdef_result_t **start_result, int n_results, dou
 
   for(i = 0; i < n_results; i++) {
     if(*result == NULL)break;
-    length += sizeof(double);
+    length += sizeof(struct userdef_result_t);
     result++;
   }
-  if (NULL == (*array = (double*)malloc(sizeof(double) * length))) {
+  if (NULL == (*array = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t) * length))) {
     printf ("malloc failed on send buffer...");
     return 0;
   };

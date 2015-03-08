@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
 
     for (i = 0; i < N_JOBS; i++) {
       mpz_init_set(jobs[i].target, n);
-      mpz_init_set(jobs[i].rangeStart);
+      mpz_init(jobs[i].rangeStart);
       mpz_mul_si(jobs[i].rangeStart, chunk_size, i);
       mpz_init(jobs[i].rangeEnd);
       if (i == N_JOBS-1) {

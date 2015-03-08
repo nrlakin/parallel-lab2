@@ -42,24 +42,28 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
     return NULL;
   };
 
+  int i;
   mpz_t n, root, chunk_size;
 
   mpz_init_set_str(n, START_NUM, 10);
   mpz_init(root);
   mpz_init(chunk_size)
   mpz_sqrt(root, n);
-  mpz_tdiv(chunk_size, n, N_JOBS);
+  mpz_tdiv_q_ui(chunk_size, root, N_JOBS);
 
   for (i = 0; i < N_JOBS; i++) {
-    jobs[i].target = n;
+    mpz_init_set(jobs[i].target, n);
+    mpz_init_set(jobs[i].rangeStart);
+    mpz_mul_si(jobs[i].rangeStart, chunk_size, i);
+    mpz_init(jobs[i].rangeEnd);
     if (i == N_JOBS-1) {
-      jobs[i].length += VectorLength % N_JOBS;
+      mpz_set(jobs[i].rangeEnd, root);
+    } else {
+      mpz_mul_si(jobs[i].rangeStart, chunk_size, i+1);
     }
-    jobs[i].vector = &vector[i*chunk_size];
     job_queue[i] = &(jobs[i]);
   }
   job_queue[i] = NULL;
-
   return job_queue;
 }
 

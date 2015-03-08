@@ -23,6 +23,7 @@ struct userdef_work_t {
   mpz_t rangeEnd;
 };
 
+// be sure to include number it multiplies with when gathering factors
 struct userdef_result_t {
   int length;
   mpz_t *factors;
@@ -34,10 +35,12 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
 
   if (NULL == (jobs = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t) * N_JOBS))) {
     printf ("malloc failed on allocating jobs...");
+    return NULL;
   };
 
   if (NULL == (job_queue = (struct userdef_work_t**)malloc(sizeof(struct userdef_work_t*) * N_JOBS + 1))) {
     printf ("malloc failed on allocating job queue...");
+    return NULL;
   };
 
   int i;
@@ -45,19 +48,20 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
 
   mpz_init_set_str(n, START_NUM, 10);
   mpz_init(root);
-  mpz_init(chunk_size)
+  mpz_init(chunk_size);
   mpz_sqrt(root, n);
   mpz_tdiv_q_ui(chunk_size, root, N_JOBS);
 
+  // need to skip 0,1 somewhere
   for (i = 0; i < N_JOBS; i++) {
     mpz_init_set(jobs[i].target, n);
-    mpz_init_set(jobs[i].rangeStart);
+    mpz_init(jobs[i].rangeStart);
     mpz_mul_si(jobs[i].rangeStart, chunk_size, i);
     mpz_init(jobs[i].rangeEnd);
     if (i == N_JOBS-1) {
       mpz_set(jobs[i].rangeEnd, root);
     } else {
-      mpz_mul_si(jobs[i].rangeStart, chunk_size, i+1);
+      mpz_mul_si(jobs[i].rangeEnd, chunk_size, i+1);
     }
     job_queue[i] = &(jobs[i]);
   }

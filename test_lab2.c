@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
       mpz_mul_si(jobs[i].rangeStart, chunk_size, i);
       mpz_init(jobs[i].rangeEnd);
       if (i == N_JOBS-1) {
-        mpz_set(jobs[i].rangeEnd, root);
+        mpz_set(jobs[i].rangeEnd, root+1);
       } else {
         mpz_mul_si(jobs[i].rangeEnd, chunk_size, i+1);
       }

@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-#include "mw_api.h"
+#include "./mw_api.h"
 #include <gmp.h>
 
 // Must be less than max int!
@@ -29,19 +29,19 @@ struct userdef_result_t {
   mpz_t *factors;
 };
 
-struct userdef_work_t **create_jobs (int argc, char **argv) {
+struct userdef_work_t **create_jobs(int argc, char **argv) {
   struct userdef_work_t **job_queue;
   struct userdef_work_t *jobs;
 
   if (NULL == (jobs = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t) * N_JOBS))) {
-    printf ("malloc failed on allocating jobs...");
+    printf("malloc failed on allocating jobs...");
     return NULL;
-  };
+  }
 
   if (NULL == (job_queue = (struct userdef_work_t**)malloc(sizeof(struct userdef_work_t*) * N_JOBS + 1))) {
-    printf ("malloc failed on allocating job queue...");
+    printf("malloc failed on allocating job queue...");
     return NULL;
-  };
+  }
 
   int i;
   mpz_t n, root, chunk_size;
@@ -59,7 +59,7 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
     mpz_mul_si(jobs[i].rangeStart, chunk_size, i);
     mpz_init(jobs[i].rangeEnd);
     if (i == N_JOBS-1) {
-      mpz_set(jobs[i].rangeEnd, root);
+      mpz_set(jobs[i].rangeEnd, root+1);
     } else {
       mpz_mul_si(jobs[i].rangeEnd, chunk_size, i+1);
     }
@@ -70,25 +70,27 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
 }
 
 int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, double **array, int *len) {
-  int i, length=0;
+  int i, length = 0;
   void *destPtr;
-  long job_len;
   struct userdef_work_t **job = start_job;
+  long job_len;
 
-  for(i = 0; i < n_jobs; i++) {
-    if(*job == NULL)break;
-    length += (sizeof(double) * (*job)->length) + sizeof(long);
+  for (i = 0; i < n_jobs; i++) {
+    if (*job == NULL) break;
+    // is this right? or 3*sizeof(mpz_t)
+    length += (sizeof(struct userdef_work_t));
     job++;
   }
+  // don't we just allocate bytes??
   if (NULL == (*array = (double*)malloc(sizeof(double) * length))) {
-    printf ("malloc failed on send buffer...");
+    printf("malloc failed on send buffer...");
     return 0;
-  };
+  }
   *len = length;
   job = start_job;
   destPtr = *array;
-  for(i = 0; i < n_jobs; i++) {
-    if(*job == NULL) break;
+  for (i = 0; i < n_jobs; i++) {
+    if (*job == NULL) break;
     job_len = (*job)->length;
     destPtr = memcpy(destPtr, &job_len, sizeof(long));
     destPtr += sizeof(long);
@@ -104,18 +106,18 @@ int deserialize_jobs(struct userdef_work_t **queue, double *array, int len) {
   long *lengthPtr = array;
   double *srcPtr = ++array;
   while (NULL != *queue)queue++;
-  while(len) {
+  while (len) {
     if (NULL == (jobPtr = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t)))) {
-      printf ("malloc failed on receive buffer...");
+      printf("malloc failed on receive buffer...");
       return 0;
-    };
+    }
     jobPtr->length = *lengthPtr;
     jobPtr->vector = srcPtr;
     *queue++ = jobPtr;
     srcPtr += jobPtr->length;
     lengthPtr = srcPtr;
     srcPtr++;
-    len-=(jobPtr->length * sizeof(double)) + sizeof(long);
+    len -= (jobPtr->length * sizeof(double)) + sizeof(long);
   }
   *queue = NULL;
   return 1;
@@ -123,23 +125,23 @@ int deserialize_jobs(struct userdef_work_t **queue, double *array, int len) {
 
 int serialize_results(struct userdef_result_t **start_result, int n_results, double **array, int *len) {
   struct userdef_result_t **result = start_result;
-  int i, length=0;
+  int i, length = 0;
   double *destPtr;
 
-  for(i = 0; i < n_results; i++) {
-    if(*result == NULL)break;
+  for (i = 0; i < n_results; i++) {
+    if (*result == NULL) break;
     length += sizeof(double);
     result++;
   }
   if (NULL == (*array = (double*)malloc(sizeof(double) * length))) {
-    printf ("malloc failed on send buffer...");
+    printf("malloc failed on send buffer...");
     return 0;
-  };
+  }
   *len = length;
   result = start_result;
   destPtr = *array;
-  for(i = 0; i < n_results; i++) {
-    if(*result == NULL) break;
+  for (i = 0; i < n_results; i++) {
+    if (*result == NULL) break;
     *destPtr++ = (*result)->product;
     result++;
   }
@@ -150,25 +152,25 @@ int deserialize_results(struct userdef_result_t **queue, double *array, int len)
   struct userdef_result_t *resultPtr;
   double *srcPtr = array;
   while (NULL != *queue)queue++;
-  while(len) {
+  while (len) {
     if (NULL == (resultPtr = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t)))) {
-      printf ("malloc failed on receive buffer...");
+      printf("malloc failed on receive buffer...");
       return 0;
-    };
+    }
     resultPtr->product = *srcPtr;
     *queue++ = resultPtr;
     srcPtr++;
-    len-=sizeof(double);
+    len -= sizeof(double);
   }
   *queue = NULL;
   return 1;
 }
 
-int userdef_result (struct userdef_result_t **res) {
+int userdef_result(struct userdef_result_t **res) {
   double dot_product = 0;
   int i;
 
-  while(*res != NULL) {
+  while (*res != NULL) {
     dot_product += (*res)->product;
     res++;
   }
@@ -176,17 +178,30 @@ int userdef_result (struct userdef_result_t **res) {
   return 1;
 }
 
-struct userdef_result_t *userdef_compute (struct userdef_work_t *work) {
+struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   struct userdef_result_t *result;
   int i;
   if (NULL == (result = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t)))) {
-    printf ("malloc failed on userdef_compute...");
+    printf("malloc failed on userdef_compute...");
     return NULL;
-  };
+  }
   printf("Worker got job:\n");
-  printVector(work->vector, work->length);
   result->product = norm(work->vector, work->length);
   return result;
+}
+
+double factors(mpz_t target, mpz_t start, mpz_t) {
+  mpz_t mod, current, factor;
+  mpz_init(mod);
+  mpz_init(factor);
+  for (mpz_init_set(current, start); mpz_cmp(current, stop) < 0; mpz_add_ui(current, current, 1)) {
+    mpz_mod(mod, target, current);
+    if (mpz_cmp_ui(mod, 0) == 0) {
+      mpz_tdiv_q(factor, target, current);
+      // add factor and mod to some data structure
+    }
+  }
+  // return data structure
 }
 
 int cleanup(struct userdef_work_t **work) {

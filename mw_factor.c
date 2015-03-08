@@ -34,12 +34,10 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
 
   if (NULL == (jobs = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t) * N_JOBS))) {
     printf ("malloc failed on allocating jobs...");
-    return NULL;
   };
 
   if (NULL == (job_queue = (struct userdef_work_t**)malloc(sizeof(struct userdef_work_t*) * N_JOBS + 1))) {
     printf ("malloc failed on allocating job queue...");
-    return NULL;
   };
 
   int i;

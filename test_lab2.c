@@ -23,8 +23,6 @@ struct dubstruct {
 };
 
 int main(int argc, char** argv) {
-    mpz_t n, root, chunk_size;
-
     // mpz_init_set_str(n, START_NUM, 10);
     // mpz_init(root);
     // mpz_init(chunk_size)
@@ -36,12 +34,10 @@ int main(int argc, char** argv) {
 
     if (NULL == (jobs = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t) * N_JOBS))) {
       printf ("malloc failed on allocating jobs...");
-      return NULL;
     };
 
     if (NULL == (job_queue = (struct userdef_work_t**)malloc(sizeof(struct userdef_work_t*) * N_JOBS + 1))) {
       printf ("malloc failed on allocating job queue...");
-      return NULL;
     };
 
     int i;
@@ -49,7 +45,7 @@ int main(int argc, char** argv) {
 
     mpz_init_set_str(n, START_NUM, 10);
     mpz_init(root);
-    mpz_init(chunk_size)
+    mpz_init(chunk_size);
     mpz_sqrt(root, n);
     mpz_tdiv_q_ui(chunk_size, root, N_JOBS);
 
@@ -75,7 +71,7 @@ int main(int argc, char** argv) {
       printf ("\n");
       mpz_out_str(stdout,10, jobs[i].rangeStart);
       printf ("\n");
-      mpz_out_str(stdout,10,chunk_size, jobs[i].rangeEnd);
+      mpz_out_str(stdout,10, jobs[i].rangeEnd);
       printf ("\n");
       job_queue[i] = &(jobs[i]);
     }

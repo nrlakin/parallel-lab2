@@ -13,8 +13,8 @@
 #include "mw_api.h"
 
 // Must be less than max int!
-#define VECTOR_LENGTH 100
-#define N_JOBS  10
+#define VECTOR_LENGTH 100000000
+#define N_JOBS  1000
 //#define VECTOR_LENGTH 5
 
 /***
@@ -208,8 +208,8 @@ struct userdef_result_t *compute_dot (struct userdef_work_t *work) {
     printf ("malloc failed on compute_dot...");
     return NULL;
   };
-  printf("Worker got job:\n");
-  printVector(work->vector, work->length);
+  //printf("Worker got job:\n");
+  //printVector(work->vector, work->length);
   result->product = norm(work->vector, work->length);
   return result;
 }

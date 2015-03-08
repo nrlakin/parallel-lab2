@@ -22,7 +22,7 @@ void KillWorkers(int n_proc);
 
 mw_work_t **get_next_job(mw_work_t **current_job, int count) {
   int i;
-  for(i=1; i<count; i++) {
+  for(i=0; i<count; i++) {
     if(*current_job==NULL)break;
     current_job++;
   }
@@ -57,13 +57,14 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
     int source;
     mw_work_t **work_queue = f->create(argc, argv);
     mw_work_t **next_job = work_queue;
+    mw_result_t **next_result = result_queue;
     for (i=1; i<n_proc; i++) {
       f->serialize_work(next_job, JOBS_PER_PACKET, &send_buffer, &length);
       MPI_Send(send_buffer, length/8, MPI_DOUBLE, i, TAG_COMPUTE, MPI_COMM_WORLD);
       free(send_buffer);
       next_job = get_next_job(next_job, JOBS_PER_PACKET);
     }
-
+    printf("Sent initial batch.\n");
     while(1) {
       MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       MPI_Get_count(&status, MPI_DOUBLE, &length);
@@ -75,13 +76,18 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
             &status);
       f->deserialize_results(result_queue, receive_buffer, length*8);
       free(receive_buffer);
-      if (*next_job == NULL)break;
+      if (*next_job == NULL) {
+        printf("Last job out\n");
+        break;
+      }
       f->serialize_work(next_job, JOBS_PER_PACKET, &send_buffer, &length);
       MPI_Send(send_buffer, length/8, MPI_DOUBLE, source, TAG_COMPUTE, MPI_COMM_WORLD);
       free(send_buffer);
       next_job = get_next_job(next_job, JOBS_PER_PACKET);
     }
+    printf("Calculating result.\n");
     f->result(result_queue);
+    while(*next_result!=NULL)free(*next_result++);
     KillWorkers(n_proc);
     if (f->cleanup(work_queue)) {
       printf("Successfully cleaned up memory.\n");
@@ -106,19 +112,24 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
         count++;
       }
       free(receive_buffer);
-      while(first_job != next_job)free(*first_job++);
+      while(first_job != next_job) {
+        free(*first_job);
+        first_job++;
+      }
       f->serialize_results(result_queue, count, &send_buffer, &length);
-      printf("Sending results\n");
+      //printf("Sending results\n");
       MPI_Send(send_buffer, length/8, MPI_DOUBLE, 0, TAG_COMPUTE, MPI_COMM_WORLD);
       free(send_buffer);
 
       while(first_result != next_result) {
-        free(*first_result++);
+        free(*first_result);
+        first_result++;
       }
       first_result = result_queue;
       next_result = result_queue;
       first_job = work_queue;
       next_job = work_queue;
+      *next_job = NULL;
       count = 0;
     }
   }

@@ -76,11 +76,11 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
     srcPtr += sizeof(int);
     mpz_import(jobPtr->target, mpz_size, ORDER, WORD_SIZE, ENDIAN, NAIL, srcPtr);
     srcPtr += temp_size;
-    memcpy(&(resultPtr->rangeStart), srcPtr, sizeof(sizeof(unsigned long)));
+    memcpy(&(jobPtr->rangeStart), srcPtr, sizeof(sizeof(unsigned long)));
     srcPtr += sizeof(unsigned long);
-    memcpy(&(resultPtr->rangeEnd), srcPtr, sizeof(sizeof(unsigned long)));
+    memcpy(&(jobPtr->rangeEnd), srcPtr, sizeof(sizeof(unsigned long)));
     srcPtr += sizeof(unsigned long);
-    *queue++ = resultPtr;
+    *queue++ = jobPtr;
     len-= sizeof(int) + temp_size + 2*sizeof(unsigned long);
   }
   *queue = NULL;

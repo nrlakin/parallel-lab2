@@ -120,6 +120,10 @@ int main(int argc, char **argv) {
   mpz_out_str(stdout, 10, rec_work[0]->target);
   printf("\nrangeStart: %ld\n", rec_work[0]->rangeStart);
   printf("rangeEnd: %ld\n", rec_work[0]->rangeEnd);
+  printf("received target: ");
+  mpz_out_str(stdout, 10, rec_work[1]->target);
+  printf("\nrangeStart: %ld\n", rec_work[1]->rangeStart);
+  printf("rangeEnd: %ld\n", rec_work[1]->rangeEnd);
   //for(i=0;i<length;i++) {
   //  printf("%X\n", target[i]);
   //}

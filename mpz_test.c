@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
   mpz_t test;
   unsigned char *target;
   int length, i;
-  test = (char *)mpz_init_set_str(test, TEST_NUM, 10);
+  mpz_init_set_str(test, TEST_NUM, 10);
   serialize_mpz(test, &target, &length);
   printf("n_bytes: %d\n", length);
   for(i=0;i<length;i++) {

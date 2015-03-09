@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
   serialize_mpz(test, &target, &length);
   printf("n_bytes: %d\n", length);
   for(i=0;i<length;i++) {
-    printf("%X\n", *target[i]);
+    printf("%X\n", target[i]);
   }
   mpz_clear(test);
   free(target);

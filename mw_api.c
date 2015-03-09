@@ -162,6 +162,6 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
       *next_result = NULL;
       count = 0;
     }
+    // free any dynamically allocated worker structures here.
   }
-
 }

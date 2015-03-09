@@ -7,6 +7,8 @@
 #ifndef _MW_API_H_
 #define _MW_API_H_
 
+#include <limits.h>
+
 struct userdef_work_t;
 struct userdef_result_t;
 typedef struct userdef_work_t mw_work_t;

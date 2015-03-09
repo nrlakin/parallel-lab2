@@ -136,12 +136,14 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
   while(len) {
     if (NULL == (jobPtr = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t)))) {
       printf ("malloc failed on alloc job struct...\n");
+      *queue = NULL;
       return 0;
     };
     memcpy(&(jobPtr->length), srcPtr, sizeof(int));
     srcPtr += sizeof(int);
     if (NULL == ((jobPtr->vector) = (double*)malloc(sizeof(double) * jobPtr->length))) {
       printf ("malloc failed on allocating vector of len %d\n...", jobPtr->length);
+      *queue = NULL;
       return 0;
     };
     memcpy(jobPtr->vector, srcPtr, jobPtr->length * sizeof(double));

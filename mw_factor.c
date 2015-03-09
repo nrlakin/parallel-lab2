@@ -46,6 +46,7 @@ int get_mpz_length(mpz_t bignum) {
 }
 
 int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char **array, int *len) {
+  printf("starting serialization.\n");
   unsigned char *destPtr;
   unsigned char *temp_mpz;
   struct userdef_work_t **job = start_job;
@@ -82,10 +83,12 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
     destPtr += sizeof(unsigned long);
     job++;
   }
+  printf("finishing serialization.\n");
   return 1;
 }
 
 int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int len) {
+  printf("starting deserialization.\n");
   struct userdef_work_t *jobPtr;
   unsigned char *srcPtr = array;
   size_t mpz_size;
@@ -108,6 +111,7 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
     *queue++ = jobPtr;
     len-= sizeof(int) + temp_size + 2*sizeof(unsigned long);
   }
+  printf("ending deserialized.\n");
   *queue = NULL;
   return 1;
 }
@@ -272,7 +276,7 @@ unsigned long *getFactors(mpz_t target, unsigned long start, unsigned long end, 
 struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   struct userdef_result_t *result;
   unsigned long length = getFactorLength(work->target, work->rangeStart, work->rangeEnd);
-  if (NULL == (result = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t) * (length + 1)))) {
+  if (NULL == (result = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t)))) {
     printf("malloc failed on userdef_result...");
     return NULL;
   }

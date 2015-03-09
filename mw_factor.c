@@ -127,7 +127,6 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
     *queue++ = jobPtr;
     len-= sizeof(int) + temp_size + 2*sizeof(unsigned long);
   }
-  // printf("ending deserialized.\n");
   *queue = NULL;
   return 1;
 }
@@ -268,6 +267,7 @@ unsigned long getFactorLength(mpz_t target, unsigned long start, unsigned long e
       }
     }
   }
+  printf("freeing mod\n");
   mpz_clear(mod);
   return length;
 }
@@ -296,6 +296,7 @@ unsigned long *getFactors(mpz_t target, unsigned long start, unsigned long end, 
       }
     }
   }
+  printf("freeing factors\n");
   mpz_clear(mod);
   mpz_clear(factor);
   return factors;
@@ -314,6 +315,7 @@ struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   result->length = length;
   result->factors = getFactors(work->target, work->rangeStart, work->rangeEnd, result->length);
   // need to clear the worker's work number (no worker cleanup function)
+  printf("freeing work->target\n");
   mpz_clear(work->target);
   return result;
 }

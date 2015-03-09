@@ -13,8 +13,9 @@
 #include "./mw_api.h"
 #include <gmp.h>
 
-#define START_NUM "123456789123456789"
+#define START_NUM "1234567891234567891234"
 #define N_JOBS  10000
+// up to 1000
 #define JOBS_PER_PACKET 5
 
 #define WORD_SIZE   1
@@ -46,7 +47,7 @@ int get_mpz_length(mpz_t bignum) {
 }
 
 int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char **array, int *len) {
-  printf("starting serialization.\n");
+  // printf("starting serialization.\n");
   unsigned char *destPtr;
   unsigned char *temp_mpz;
   struct userdef_work_t **job = start_job;
@@ -83,12 +84,12 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
     destPtr += sizeof(unsigned long);
     job++;
   }
-  printf("finishing serialization.\n");
+  // printf("finishing serialization.\n");
   return 1;
 }
 
 int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int len) {
-  printf("starting deserialization.\n");
+  // printf("starting deserialization.\n");
   struct userdef_work_t *jobPtr;
   unsigned char *srcPtr = array;
   size_t mpz_size;
@@ -113,7 +114,7 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
     *queue++ = jobPtr;
     len-= sizeof(int) + temp_size + 2*sizeof(unsigned long);
   }
-  printf("ending deserialized.\n");
+  // printf("ending deserialized.\n");
   *queue = NULL;
   return 1;
 }
@@ -221,12 +222,12 @@ struct userdef_work_t **create_jobs(int argc, char **argv) {
 
 int userdef_result(struct userdef_result_t **res) {
   struct userdef_result_t **ptr;
-  printf("Received Results:\n");
+  // printf("Received Results:\n");
   ptr = res;
   int n_factors = 0;
   while(*ptr != NULL) {
     n_factors += (*ptr)->length;
-    printFactors((*ptr)->factors, (*ptr)->length);
+    // printFactors((*ptr)->factors, (*ptr)->length);
     ptr++;
   }
   printf ("there are %d factors\n", n_factors);
@@ -315,10 +316,13 @@ int cleanup(struct userdef_work_t **work, struct userdef_result_t **res) {
 
 int main(int argc, char **argv) {
   struct mw_api_spec f;
+  double start, end;
 
   MPI_Init(&argc, &argv);
 
   // start timer
+  start = MPI_Wtime();
+
   f.create = create_jobs;
   f.result = userdef_result;
   f.compute = userdef_compute;
@@ -331,35 +335,8 @@ int main(int argc, char **argv) {
 
   MW_Run(argc, argv, &f);
   // end timer
+  end = MPI_Wtime();
+  printf("%f seconds elapsed.\n", end-start);
 
   MPI_Finalize();
-
-  // struct userdef_work_t **work;
-  // struct userdef_work_t **workptr;
-  // struct userdef_result_t **resptr;
-  // struct userdef_result_t **result;
-
-  // if (NULL == (result = (struct userdef_result_t**)malloc(sizeof(struct userdef_result_t*) * N_JOBS + 1))) {
-  //   printf("malloc failed on userdef_result...");
-  //   return NULL;
-  // }
-  // *result = NULL;
-
-  // work = create_jobs(argc, argv);
-  // resptr = result;
-  // workptr = work;
-
-  // while (*work != NULL) {
-  //   printf("Starting:\n");
-  //   *result = userdef_compute(*work);
-  //   printf("Incrementing:\n");
-  //   work++;
-  //   result++;
-  // }
-  // printf("Running result:\n");
-  // userdef_result(resptr);
-  // printf("Cleaning:\n");
-  // cleanup(workptr, resptr);
-
-  // return 0;
 }

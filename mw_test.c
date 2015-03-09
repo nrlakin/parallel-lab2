@@ -178,7 +178,7 @@ int serialize_results(struct userdef_result_t **start_result, int n_results, uns
     destPtr += sizeof(double);
     result++;
   }
-  return 0;
+  return 1;
 }
 
 int deserialize_results(struct userdef_result_t **queue, unsigned char *array, int len) {

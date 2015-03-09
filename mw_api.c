@@ -44,7 +44,9 @@ void KillWorkers(int n_proc) {
 void SendWork(int dest, mw_work_t **first_job, int n_jobs, struct mw_api_spec *f) {
   unsigned char *send_buffer;
   int length;
-  f->serialize_work(first_job, n_jobs, &send_buffer, &length);
+  if (f->serialize_work(first_job, n_jobs, &send_buffer, &length) == 0) {
+    fprintf(stderr, "Error serializing work on master process.\n");
+  }
   MPI_Send(send_buffer, length, MPI_UNSIGNED_CHAR, dest, TAG_COMPUTE, MPI_COMM_WORLD);
   free(send_buffer);
 }
@@ -52,7 +54,9 @@ void SendWork(int dest, mw_work_t **first_job, int n_jobs, struct mw_api_spec *f
 void SendResults(int dest, mw_result_t **first_result, int n_results, struct mw_api_spec *f) {
   unsigned char *send_buffer;
   int length;
-  f->serialize_results(first_result, n_results, &send_buffer, &length);
+  if (f->serialize_results(first_result, n_results, &send_buffer, &length) == 0) {
+    fprintf(stderr, "Error serializing results.\n");
+  }
   MPI_Send(send_buffer, length, MPI_UNSIGNED_CHAR, 0, TAG_COMPUTE, MPI_COMM_WORLD);
   free(send_buffer);
 }
@@ -66,7 +70,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
   if (n_proc < 2) {
-    printf("Error: Master-Worker requires at least 2 processes.\n");
+    fprintf(stderr, "Runtime Error: Master-Worker requires at least 2 processes.\n");
     return;
   }
 
@@ -90,18 +94,20 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
       next_job = get_next_job(next_job, f->jobs_per_packet);
       worker_status[i-1] = BUSY;
     }
-
-    printf("Sent initial batch.\n");
     while(1) {
       MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       MPI_Get_count(&status, MPI_UNSIGNED_CHAR, &length);
       source = status.MPI_SOURCE;
       if (NULL == (receive_buffer = (unsigned char*) malloc(sizeof(unsigned char) * length))) {
-        printf("malloc failed on process %d...", rank);
+        fprintf(stderr, "malloc failed on process %d...\n", rank);
+        return;
       };
       MPI_Recv(receive_buffer, length, MPI_UNSIGNED_CHAR, source, MPI_ANY_TAG, MPI_COMM_WORLD,
             &status);
-      f->deserialize_results(result_queue, receive_buffer, length);
+      if (f->deserialize_results(result_queue, receive_buffer, length) == 0) {
+        fprintf(stderr, "Error deserializing results on process %d\n", rank);
+        return;
+      }
       free(receive_buffer);
       worker_status[source-1] = IDLE;
       if (*next_job == NULL) {
@@ -117,13 +123,19 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
     }
     KillWorkers(n_proc);
     printf("Calculating result.\n");
-    f->result(result_queue);
+    if (f->result(result_queue) == 0) {
+      fprintf(stderr, "Error in user-defined result calculation.\n");
+      return;
+    }
     // end timer
     end = MPI_Wtime();
     printf("%f seconds elapsed.\n", end-start);
 
     if (f->cleanup(work_queue, result_queue)) {
-      printf("Successfully cleaned up memory.\n");
+      fprintf(stderr, "Successfully cleaned up memory.\n");
+    } else {
+      fprintf(stderr, "Error in user-defined clean function.\n");
+      return;
     }
   } else {
     mw_work_t *work_queue[WORKER_QUEUE_LENGTH];
@@ -139,19 +151,23 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
       MPI_Get_count(&status, MPI_UNSIGNED_CHAR, &length);
       if (status.MPI_TAG == TAG_KILL) break;
       if (NULL == (receive_buffer = (unsigned char*) malloc(sizeof(unsigned char) * length))) {
-        printf("malloc failed on process %d...", rank);
+        fprintf(stderr, "malloc failed on process %d...", rank);
+        return;
       };
       MPI_Recv(receive_buffer, length, MPI_UNSIGNED_CHAR, 0, TAG_COMPUTE, MPI_COMM_WORLD,
           &status);
-      f->deserialize_work(work_queue, receive_buffer, length);
+      if (f->deserialize_work(work_queue, receive_buffer, length) == 0) {
+        fprintf(stderr, "Error deserializing work on process %d.\n", rank);
+        return;
+      }
       free(receive_buffer);
       while(*next_job != NULL) {
         *next_result++ = f->compute(*next_job++);
         count++;
       }
-      *next_result=NULL;
+      *next_result=NULL;              // terminate new result queue.
       next_job = work_queue;
-      while(*next_job != NULL) {
+      while(*next_job != NULL) {      // free work structures on finishing calculation.
         free(*next_job++);
       }
       SendResults(0, result_queue, count, f);

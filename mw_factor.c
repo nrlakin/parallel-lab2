@@ -13,7 +13,7 @@
 #include "./mw_api.h"
 #include <gmp.h>
 
-#define START_NUM "12345"
+#define START_NUM "123456789123456789123456789"
 #define N_JOBS  2
 #define JOBS_PER_PACKET 5
 
@@ -287,6 +287,7 @@ struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   printf("Length: %lu\n", result->length);
   result->factors = getFactors(work->target, work->rangeStart, work->rangeEnd, result->length);
   // printFactors(result->factors, result->length);
+  mpz_clear(work->target);
   printf("Done Printing\n");
   return result;
 }

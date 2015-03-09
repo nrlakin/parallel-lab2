@@ -13,16 +13,22 @@
 #include "./mw_api.h"
 #include <gmp.h>
 
-#define START_NUM "12345678912345678912"
-#define N_JOBS  8
-// up to 1000
-#define JOBS_PER_PACKET 1
+// configuration variables:
+// start_num = number we are factoring
+// N_JOBS = number of jobs work is split up into (max is max_integer)
+// JOBS_PER_PACKET = number of jobs sent in each mpi communication packet
+// #define START_NUM "12345678912345678912"
+#define START_NUM "123456789"
+#define N_JOBS  10000
+#define JOBS_PER_PACKET 900
 
+// config variables for mpz_import and export
 #define WORD_SIZE   1
 #define ENDIAN      1
 #define NAIL        0
 #define ORDER       1
 
+// function to print the resulting factors
 void printFactors(unsigned long * vec, unsigned long len) {
   int i;
   for (i=0; i<len; i++) {
@@ -30,28 +36,33 @@ void printFactors(unsigned long * vec, unsigned long len) {
   }
 }
 
+// work structure
 struct userdef_work_t {
   mpz_t target;
   unsigned long rangeStart;
   unsigned long rangeEnd;
 };
 
+// result structure
 struct userdef_result_t {
   unsigned long length;
   unsigned long *factors;
 };
 
+// function returning the length of a mpz_number (see gmp docs)
 int get_mpz_length(mpz_t bignum) {
   int numb = 8 * WORD_SIZE - NAIL;
   return (mpz_sizeinbase(bignum, 2) + numb-1)/numb;
 }
 
+// function to serialize an array of work pointers (**start_job) to a byte stream
+// writes to **array and *len
 int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char **array, int *len) {
-  // printf("starting serialization.\n");
   unsigned char *destPtr;
   unsigned char *temp_mpz;
   struct userdef_work_t **job = start_job;
   size_t mpz_size;
+  // calculate total length of work pointed at by the work_queue
   int i, mpz_len, length = 0;
   for(i=0; i<n_jobs; i++) {
     if(*job == NULL) break;
@@ -60,6 +71,7 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
     length += 2*sizeof(unsigned long);  //for start/end
     job++;
   }
+  // allocate space for the byte array using the calculated length
   if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
     printf("malloc failed on allocating send buffer\n");
     return 0;
@@ -67,11 +79,13 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
   job = start_job;
   destPtr = *array;
   *len = length;
+  // iterate through copying each work structure into the assigned buffer
   for(i=0; i<n_jobs; i++) {
     if(*job == NULL)break;
     mpz_len = get_mpz_length((*job)->target);
     memcpy(destPtr, &mpz_len, sizeof(int));
     destPtr += sizeof(int);
+    // utilize the mpz_export function to export the gmp number
     mpz_export(destPtr, &mpz_size, ORDER, WORD_SIZE, ENDIAN, NAIL, (*job)->target);
     if (mpz_len != mpz_size) {
       printf("mpz error--different functions report different sizes.\n");
@@ -84,17 +98,17 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
     destPtr += sizeof(unsigned long);
     job++;
   }
-  // printf("finishing serialization.\n");
   return 1;
 }
 
+// function to deserialize a byte stream (**queue) to an array of work
+// writes to provided *array and len
 int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int len) {
-  // printf("starting deserialization.\n");
   struct userdef_work_t *jobPtr;
   unsigned char *srcPtr = array;
   size_t mpz_size;
   int temp_size;
-  while (NULL != *queue)queue++;
+  while (NULL != *queue) queue++;
   while(len) {
     if (NULL == (jobPtr = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t)))) {
       printf ("malloc failed on receive buffer...\n");
@@ -114,18 +128,21 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
     *queue++ = jobPtr;
     len-= sizeof(int) + temp_size + 2*sizeof(unsigned long);
   }
-  // printf("ending deserialized.\n");
   *queue = NULL;
   return 1;
 }
 
+// function to serialize result struct pointer array to a byte array
+// writes to **array and *len
 int serialize_results(struct userdef_result_t **start_result, int n_results, unsigned char **array, int *len) {
   int i, length=0;
   unsigned char *destPtr;
   long result_len;
   struct userdef_result_t **result = start_result;
+  // loop through, allocate space for entire result message
   for(i = 0; i < n_results; i++) {
     if(*result == NULL) break;
+    // result type is and array of unsigned longs
     length += (sizeof(unsigned long) * (*result)->length) + sizeof(unsigned long);
     result++;
   }
@@ -136,6 +153,7 @@ int serialize_results(struct userdef_result_t **start_result, int n_results, uns
   *len = length;
   result = start_result;
   destPtr = *array;
+  // populate serialized array
   for(i = 0; i < n_results; i++) {
     if(*result == NULL) break;
     result_len = (*result)->length;
@@ -147,16 +165,19 @@ int serialize_results(struct userdef_result_t **start_result, int n_results, uns
   }
   return 1;
 }
-
+// function to deserialize byte array into a result struct array to a
+// writes to *array and len
 int deserialize_results(struct userdef_result_t **queue, unsigned char *array, int len) {
   struct userdef_result_t *resultPtr;
   unsigned char *srcPtr = array;
   while (NULL != *queue) queue++;
+  // populate results
   while(len) {
     if (NULL == (resultPtr = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t)))) {
       printf ("malloc failed on alloc result struct...\n");
       return 0;
     };
+    // result in this case is an array of unsigned longs with an addition unsigned long for length
     memcpy(&(resultPtr->length), srcPtr, sizeof(unsigned long));
     srcPtr += sizeof(unsigned long);
     if (NULL == ((resultPtr->factors) = (unsigned long*)malloc(sizeof(unsigned long) * resultPtr->length))) {
@@ -209,9 +230,6 @@ struct userdef_work_t **create_jobs(int argc, char **argv) {
       jobs[i].rangeEnd = (chunk_size_ul * (i+1));
     }
     job_queue[i] = &(jobs[i]);
-    //printf("Start: %lu\n", jobs[i].rangeStart);
-    //printf("End: %lu\n", jobs[i].rangeEnd);
-    //printf("Chunk: %lu\n", chunk_size_ul);
   }
   job_queue[i] = NULL;
 
@@ -220,20 +238,23 @@ struct userdef_work_t **create_jobs(int argc, char **argv) {
   return job_queue;
 }
 
+// userdef result function for master
+// compile and print the results returned from workers
 int userdef_result(struct userdef_result_t **res) {
   struct userdef_result_t **ptr;
-  // printf("Received Results:\n");
   ptr = res;
   int n_factors = 0;
   while(*ptr != NULL) {
     n_factors += (*ptr)->length;
-    // printFactors((*ptr)->factors, (*ptr)->length);
     ptr++;
   }
   printf ("there are %d factors\n", n_factors);
   return 1;
 }
 
+// function that iterates through and calculates the total number of
+// factors for the provided number, start, and end
+// (not efficient but good for creating work)
 unsigned long getFactorLength(mpz_t target, unsigned long start, unsigned long end) {
   unsigned long length = 0;
   mpz_t mod;
@@ -248,10 +269,11 @@ unsigned long getFactorLength(mpz_t target, unsigned long start, unsigned long e
     }
   }
   mpz_clear(mod);
-  //printf("Length: %lu\n", length);
   return length;
 }
 
+// get factors compiles a n array of factors for
+// given number, start, end, and length
 unsigned long *getFactors(mpz_t target, unsigned long start, unsigned long end, unsigned long length) {
   int count = 0;
   unsigned long current;
@@ -279,23 +301,24 @@ unsigned long *getFactors(mpz_t target, unsigned long start, unsigned long end, 
   return factors;
 }
 
+// worker compute result function
 struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   struct userdef_result_t *result;
+  // get the number of factors for the number, malloc an result for space
   unsigned long length = getFactorLength(work->target, work->rangeStart, work->rangeEnd);
   if (NULL == (result = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t)))) {
     printf("malloc failed on userdef_result...");
     return NULL;
   }
-  //printf("Worker got job:\n");
+  // populate the assigned result
   result->length = length;
-  //printf("Length: %lu\n", result->length);
   result->factors = getFactors(work->target, work->rangeStart, work->rangeEnd, result->length);
-  // printFactors(result->factors, result->length);
+  // need to clear the worker's work number (no worker cleanup function)
   mpz_clear(work->target);
-  //printf("Done Printing\n");
   return result;
 }
 
+// userdef cleanup function to clean created work and results
 int cleanup(struct userdef_work_t **work, struct userdef_result_t **res) {
   struct userdef_work_t **workPtr = work;
 
@@ -310,7 +333,6 @@ int cleanup(struct userdef_work_t **work, struct userdef_result_t **res) {
     free(*res);
     res++;
   }
-  //free(res_ptr);
   return 1;
 }
 

@@ -137,7 +137,10 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
     while(1) {
       MPI_Probe(0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       MPI_Get_count(&status, MPI_UNSIGNED_CHAR, &length);
-      if (status.MPI_TAG == TAG_KILL)break;
+      if (status.MPI_TAG == TAG_KILL) {
+        printf("killing...");
+        break;
+      }
       if (NULL == (receive_buffer = (unsigned char*) malloc(sizeof(unsigned char) * length))) {
         printf("malloc failed on process %d...", rank);
       };
@@ -150,10 +153,22 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
         count++;
       }
       next_job = work_queue;
-      while(*next_job != NULL) free(*next_job++);
+      int jobcount = 0;
+      while(*next_job != NULL) {
+        // printf("freeing *next_job...\n");
+        jobcount++;
+        free(*next_job++);
+      }
+      printf("job jobcount...%i\n", jobcount);
       SendResults(0, result_queue, count, f);
       next_result = result_queue;
-      while(*next_result != NULL) free(*next_result++);
+      int resultcount = 0;
+      while(*next_result != NULL) {
+        resultcount++;
+        printf("job resultcount...%i\n", resultcount);
+        printf("freeing *next_result...\n", *next_result);
+        free(*next_result++);
+      }
 
       // Reset pointers
       next_result = result_queue;

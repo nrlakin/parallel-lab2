@@ -51,6 +51,7 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
       printf("mpz error--different functions report different sizes.\n");
       return 0;
     }
+    printf("serializer length: %d\n", mpz_len);
     destPtr += mpz_len;
     memcpy(destPtr, &((*job)->rangeStart), sizeof(unsigned long));
     destPtr += sizeof(unsigned long);

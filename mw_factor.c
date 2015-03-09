@@ -15,6 +15,7 @@
 
 #define START_NUM "10000000"
 #define N_JOBS  6
+#define JOBS_PER_PACKET 5
 
 #define WORD_SIZE   1
 #define ENDIAN      1
@@ -314,8 +315,7 @@ int main(int argc, char **argv) {
   f.serialize_results = serialize_results;
   f.deserialize_results = deserialize_results;
   f.cleanup = cleanup;
-  f.work_sz = sizeof(struct userdef_work_t);
-  f.res_sz = sizeof(struct userdef_result_t);
+  f.jobs_per_packet = JOBS_PER_PACKET;
 
   MW_Run(argc, argv, &f);
   // end timer

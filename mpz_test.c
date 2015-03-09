@@ -61,7 +61,7 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
 
 int main(int argc, char **argv) {
   struct userdef_work_t test;
-  struct userdef_work_t work_queue[2];
+  struct userdef_work_t *work_queue[2];
   unsigned char *target;
   int length, i;
   mpz_init_set_str(test.target, TEST_NUM, 10);

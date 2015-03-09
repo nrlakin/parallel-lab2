@@ -46,7 +46,9 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
     mpz_len = get_mpz_length((*job)->target);
     memcpy(destPtr, &mpz_len, sizeof(int));
     destPtr += sizeof(int);
+    printf("before mpz_export\n");
     mpz_export(destPtr, &mpz_size, ORDER, WORD_SIZE, ENDIAN, NAIL, (*job)->target);
+    printf("after mpz_export\n");
     if (mpz_len != mpz_size) {
       printf("mpz error--different functions report different sizes.\n");
       return 0;

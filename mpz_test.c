@@ -3,7 +3,7 @@
 #include <string.h>
 #include <gmp.h>
 
-#define TEST_NUM  "123456789"
+#define TEST_NUM  "123456789123456789123456789"
 #define WORD_SIZE   1
 #define ENDIAN      1
 #define NAIL        0
@@ -89,8 +89,9 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
 
 int main(int argc, char **argv) {
   struct userdef_work_t test;
-  struct userdef_work_t *work_queue[2];
-  struct userdef_work_t *rec_work[2];
+  struct userdef_work_t test2;
+  struct userdef_work_t *work_queue[3];
+  struct userdef_work_t *rec_work[3];
   unsigned char *target;
   int length, i;
   rec_work[0] = NULL;
@@ -98,13 +99,19 @@ int main(int argc, char **argv) {
   mpz_init_set_str(test.target, TEST_NUM, 10);
   test.rangeStart = 1;
   test.rangeEnd = 5;
+  mpz_init_set_str(test2.target, TEST_NUM, 10);
+  test2.rangeStart = 12787;
+  test2.rangeEnd = 98765;
   work_queue[0] = &test;
-  work_queue[1] = NULL;
-  if(serialize_jobs(work_queue, 1, &target, &length)==0) {
+  work_queue[1] = &test2;
+  work_queue[2] = NULL;
+  if(serialize_jobs(work_queue, 2, &target, &length)==0) {
     printf("serializer returned error...");
     return 1;
   }
   printf("serialized length: %d\n", length);
+  mpz_clear(test.target);
+  mpz_clear(test2.target);
   for(i=0; i<length; i++) {
     printf("%X\n", target[i]);
   }
@@ -116,9 +123,11 @@ int main(int argc, char **argv) {
   //for(i=0;i<length;i++) {
   //  printf("%X\n", target[i]);
   //}
-  mpz_clear(test.target);
+
   free(target);
   mpz_clear(rec_work[0]->target);
+  mpz_clear(rec_work[1]->target);
   free(rec_work[0]);
+  free(rec_work[1]);
   return 0;
 }

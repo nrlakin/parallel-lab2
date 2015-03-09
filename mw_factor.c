@@ -18,7 +18,7 @@
 // N_JOBS = number of jobs work is split up into (max is max_integer)
 // JOBS_PER_PACKET = number of jobs sent in each mpi communication packet
 // #define START_NUM "12345678912345678912"
-#define START_NUM "123456789"
+#define START_NUM "12345678912345678912"
 #define N_JOBS  10000
 #define JOBS_PER_PACKET 900
 

@@ -13,8 +13,8 @@
 #include "./mw_api.h"
 #include <gmp.h>
 
-#define START_NUM "1000000000000000000"
-#define N_JOBS  6
+#define START_NUM "12345"
+#define N_JOBS  2
 #define JOBS_PER_PACKET 5
 
 #define WORD_SIZE   1

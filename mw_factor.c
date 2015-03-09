@@ -208,9 +208,9 @@ struct userdef_work_t **create_jobs(int argc, char **argv) {
       jobs[i].rangeEnd = (chunk_size_ul * (i+1));
     }
     job_queue[i] = &(jobs[i]);
-    printf("Start: %lu\n", jobs[i].rangeStart);
-    printf("End: %lu\n", jobs[i].rangeEnd);
-    printf("Chunk: %lu\n", chunk_size_ul);
+    //printf("Start: %lu\n", jobs[i].rangeStart);
+    //printf("End: %lu\n", jobs[i].rangeEnd);
+    //printf("Chunk: %lu\n", chunk_size_ul);
   }
   job_queue[i] = NULL;
 
@@ -282,13 +282,13 @@ struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
     printf("malloc failed on userdef_result...");
     return NULL;
   }
-  printf("Worker got job:\n");
+  //printf("Worker got job:\n");
   result->length = length;
-  printf("Length: %lu\n", result->length);
+  //printf("Length: %lu\n", result->length);
   result->factors = getFactors(work->target, work->rangeStart, work->rangeEnd, result->length);
   // printFactors(result->factors, result->length);
   mpz_clear(work->target);
-  printf("Done Printing\n");
+  //printf("Done Printing\n");
   return result;
 }
 

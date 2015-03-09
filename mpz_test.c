@@ -39,6 +39,7 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
     printf("malloc failed on allocating send buffer\n");
     return 0;
   }
+  printf("past malloc\n");
   job = start_job;
   *len = length;
   for(i=0; i<n_jobs; i++) {

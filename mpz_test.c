@@ -3,7 +3,7 @@
 #include <string.h>
 #include <gmp.h>
 
-#define TEST_NUM  "123456789123456789123456789123456789"
+#define TEST_NUM  "123456789"
 #define WORD_SIZE   1
 #define ENDIAN      1
 #define NAIL        0
@@ -12,7 +12,7 @@
 struct userdef_work_t {
   mpz_t target;
   unsigned long rangeStart;
-  unsigned lont rangeEnd;
+  unsigned long rangeEnd;
 };
 
 int get_mpz_length(mpz_t bignum) {

@@ -20,10 +20,10 @@ int get_mpz_length(mpz_t bignum) {
   return (mpz_sizeinbase(bignum, 2) + numb-1)/numb;
 }
 
-int serialize_jobs(struct userdef_job_t **start_job, int n_jobs, unsigned char **array, int *len) {
+int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char **array, int *len) {
   unsigned char *destPtr = *array;
   unsigned char *temp_mpz;
-  struct userdef_job_t **job = start_job;
+  struct userdef_work_t **job = start_job;
   size_t mpz_size;
   int i, mpz_len, length = 0;
   for(i=0; i<n_jobs; i++) {

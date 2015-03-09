@@ -26,6 +26,7 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
   struct userdef_work_t **job = start_job;
   size_t mpz_size;
   int i, mpz_len, length = 0;
+  printf("made it to serializer\n");
   for(i=0; i<n_jobs; i++) {
     if(*job == NULL) break;
     length += sizeof(int);    //for mpz size
@@ -33,6 +34,7 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
     length += 2*sizeof(unsigned long);  //for start/end
     job++;
   }
+  printf("serializer thinks length is %d\n", length);
   if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
     printf("malloc failed on allocating send buffer\n");
     return 0;

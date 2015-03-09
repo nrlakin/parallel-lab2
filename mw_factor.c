@@ -25,7 +25,7 @@
 void printFactors(unsigned long * vec, unsigned long len) {
   int i;
   for (i=0; i<len; i++) {
-    printf("%lu  ", *vec++);
+    printf("%lu\n", *vec++);
   }
 }
 
@@ -223,10 +223,13 @@ int userdef_result(struct userdef_result_t **res) {
   struct userdef_result_t **ptr;
   printf("Received Results:\n");
   ptr = res;
+  int n_factors = 0;
   while(*ptr != NULL) {
+    n_factors += (*ptr)->length;
     printFactors((*ptr)->factors, (*ptr)->length);
     ptr++;
   }
+  printf ("there are %d factors\n", n_factors);
   return 1;
 }
 

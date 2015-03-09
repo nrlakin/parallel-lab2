@@ -318,6 +318,7 @@ struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   // need to clear the worker's work number (no worker cleanup function)
   printf("freeing work->target\n");
   mpz_out_str(stdout,10,work->target);
+  printf ("\n");
   mpz_clear(work->target);
   return result;
 }

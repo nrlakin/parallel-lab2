@@ -11,7 +11,7 @@
 
 #define WORKER_QUEUE_LENGTH 1000
 #define MASTER_QUEUE_LENGTH 10000
-#define JOBS_PER_PACKET 5
+//#define JOBS_PER_PACKET 5
 
 #define TAG_COMPUTE 0
 #define TAG_KILL    1
@@ -82,8 +82,8 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
 
     unsigned char worker_status[n_proc-1];
     for (i=1; i<n_proc; i++) {
-      SendWork(i, next_job, JOBS_PER_PACKET, f);
-      next_job = get_next_job(next_job, JOBS_PER_PACKET);
+      SendWork(i, next_job, f->jobs_per_packet, f);
+      next_job = get_next_job(next_job, f->jobs_per_packet);
       worker_status[i-1] = BUSY;
     }
 
@@ -105,21 +105,16 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
           if (worker_status[i]==BUSY) break;
         }
         if (i == (n_proc-1)) break;
-
-        /*
-        status[source-1] = IDLE;
-        iterate through status; if all==IDLE, break
-        */
       } else {
-        SendWork(source, next_job, JOBS_PER_PACKET, f);
-        next_job = get_next_job(next_job, JOBS_PER_PACKET);
+        SendWork(source, next_job, f->jobs_per_packet, f);
+        next_job = get_next_job(next_job, f->jobs_per_packet);
         worker_status[source-1] = BUSY;
       }
     }
     KillWorkers(n_proc);
     printf("Calculating result.\n");
     f->result(result_queue);
-    
+
     if (f->cleanup(work_queue, result_queue)) {
       printf("Successfully cleaned up memory.\n");
     }

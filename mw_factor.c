@@ -102,8 +102,8 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
     memcpy(&temp_size, srcPtr, sizeof(int));
     mpz_size = temp_size;
     srcPtr += sizeof(int);
-    //mpz_import(jobPtr->target, mpz_size, ORDER, WORD_SIZE, ENDIAN, NAIL, srcPtr);
-    mpz_init_set_str(jobPtr->target, START_NUM, 10);
+    mpz_import(jobPtr->target, mpz_size, ORDER, WORD_SIZE, ENDIAN, NAIL, srcPtr);
+    // mpz_init_set_str(jobPtr->target, START_NUM, 10);
     srcPtr += temp_size;
     memcpy(&(jobPtr->rangeStart), srcPtr, sizeof(sizeof(unsigned long)));
     srcPtr += sizeof(unsigned long);
@@ -285,7 +285,7 @@ struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   result->length = length;
   printf("Length: %lu\n", result->length);
   result->factors = getFactors(work->target, work->rangeStart, work->rangeEnd, result->length);
-  printFactors(result->factors, result->length);
+  // printFactors(result->factors, result->length);
   printf("Done Printing\n");
   return result;
 }

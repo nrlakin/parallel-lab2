@@ -316,12 +316,8 @@ int cleanup(struct userdef_work_t **work, struct userdef_result_t **res) {
 
 int main(int argc, char **argv) {
   struct mw_api_spec f;
-  double start, end;
 
   MPI_Init(&argc, &argv);
-
-  // start timer
-  start = MPI_Wtime();
 
   f.create = create_jobs;
   f.result = userdef_result;
@@ -334,9 +330,6 @@ int main(int argc, char **argv) {
   f.jobs_per_packet = JOBS_PER_PACKET;
 
   MW_Run(argc, argv, &f);
-  // end timer
-  end = MPI_Wtime();
-  printf("%f seconds elapsed.\n", end-start);
 
   MPI_Finalize();
 }

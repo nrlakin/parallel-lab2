@@ -73,6 +73,10 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
   if (rank == 0) {
     int source;
 
+    double start, end;
+    // start timer
+    start = MPI_Wtime();
+
     // Init work queues
     mw_work_t **work_queue = f->create(argc, argv);
     mw_work_t **next_job = work_queue;
@@ -114,6 +118,9 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
     KillWorkers(n_proc);
     printf("Calculating result.\n");
     f->result(result_queue);
+    // end timer
+    end = MPI_Wtime();
+    printf("%f seconds elapsed.\n", end-start);
 
     if (f->cleanup(work_queue, result_queue)) {
       printf("Successfully cleaned up memory.\n");

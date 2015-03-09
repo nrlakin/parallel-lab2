@@ -154,13 +154,13 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
       }
       next_job = work_queue;
       while(*next_job != NULL) {
-        printf("freeing *next_job...");
+        // printf("freeing *next_job...\n");
         free(*next_job++);
       }
       SendResults(0, result_queue, count, f);
       next_result = result_queue;
       while(*next_result != NULL) {
-        printf("freeing *next_result...");
+        printf("freeing *next_result...\n", *next_result);
         free(*next_result++);
       }
 

@@ -137,7 +137,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
     while(1) {
       MPI_Probe(0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       MPI_Get_count(&status, MPI_UNSIGNED_CHAR, &length);
-      if (status.MPI_TAG == TAG_KILL)break;
+      if (status.MPI_TAG == TAG_KILL) break;
       if (NULL == (receive_buffer = (unsigned char*) malloc(sizeof(unsigned char) * length))) {
         printf("malloc failed on process %d...", rank);
       };

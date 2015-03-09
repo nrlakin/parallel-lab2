@@ -17,9 +17,10 @@
 // start_num = number we are factoring
 // N_JOBS = number of jobs work is split up into (max is max_integer)
 // JOBS_PER_PACKET = number of jobs sent in each mpi communication packet
-#define START_NUM "12345678912345678912"
+// #define START_NUM "12345678912345678912"
+#define START_NUM "123456789"
 #define N_JOBS  10000
-#define JOBS_PER_PACKET 50
+#define JOBS_PER_PACKET 900
 
 // config variables for mpz_import and export
 #define WORD_SIZE   1
@@ -316,6 +317,7 @@ struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   result->factors = getFactors(work->target, work->rangeStart, work->rangeEnd, result->length);
   // need to clear the worker's work number (no worker cleanup function)
   printf("freeing work->target\n");
+  mpz_out_str(stdout,10,work->target);
   mpz_clear(work->target);
   return result;
 }

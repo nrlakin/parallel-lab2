@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include "mw_api.h"
 
-#define WORKER_QUEUE_LENGTH 1000
-#define MASTER_QUEUE_LENGTH 10000
+#define WORKER_QUEUE_LENGTH 1001
+#define MASTER_QUEUE_LENGTH 10001
 //#define JOBS_PER_PACKET 5
 
 #define TAG_COMPUTE 0

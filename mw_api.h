@@ -12,6 +12,9 @@ struct userdef_result_t;
 typedef struct userdef_work_t mw_work_t;
 typedef struct userdef_result_t mw_result_t;
 
+#define MAX_JOBS_PER_PACKET 1000
+#define MAX_JOBS_MASTER     10000
+
 struct mw_api_spec {
   mw_work_t **(*create) (int argc, char **argv);
   int (*result) (mw_result_t **res);

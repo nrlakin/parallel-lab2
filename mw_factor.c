@@ -268,7 +268,6 @@ unsigned long getFactorLength(mpz_t target, unsigned long start, unsigned long e
       }
     }
   }
-  printf("freeing mod\n");
   mpz_clear(mod);
   return length;
 }
@@ -297,7 +296,6 @@ unsigned long *getFactors(mpz_t target, unsigned long start, unsigned long end, 
       }
     }
   }
-  printf("freeing factors\n");
   mpz_clear(mod);
   mpz_clear(factor);
   return factors;

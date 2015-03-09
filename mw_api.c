@@ -23,7 +23,11 @@
 /*** Local Prototypes ***/
 mw_work_t **get_next_job(mw_work_t **current_job, int count);
 void KillWorkers(int n_proc);
+void SendWork(int dest, mw_work_t **first_job, int n_jobs, struct mw_api_spec *f);
+void SendResults(int dest, mw_result_t **first_result, int n_results, struct mw_api_spec *f);
 
+// Helper function to pull next 'count' jobs off queue without running past end
+// of buffer.
 mw_work_t **get_next_job(mw_work_t **current_job, int count) {
   int i;
   for(i=0; i<count; i++) {
@@ -33,6 +37,7 @@ mw_work_t **get_next_job(mw_work_t **current_job, int count) {
   return current_job;
 }
 
+// Sends 'terminate' command to all worker threads.
 void KillWorkers(int n_proc) {
   int i, dummy;
   MPI_Status status;
@@ -41,6 +46,7 @@ void KillWorkers(int n_proc) {
   }
 }
 
+// Send n_jobs to worker of rank 'dest'.
 void SendWork(int dest, mw_work_t **first_job, int n_jobs, struct mw_api_spec *f) {
   unsigned char *send_buffer;
   int length;
@@ -51,6 +57,7 @@ void SendWork(int dest, mw_work_t **first_job, int n_jobs, struct mw_api_spec *f
   free(send_buffer);
 }
 
+// Send n_results to process of rank 'dest'.
 void SendResults(int dest, mw_result_t **first_result, int n_results, struct mw_api_spec *f) {
   unsigned char *send_buffer;
   int length;
@@ -66,6 +73,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
   unsigned char *receive_buffer;
   MPI_Status status;
 
+  // Get environment variables.
   MPI_Comm_size (MPI_COMM_WORLD, &n_proc);
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
@@ -74,9 +82,9 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
     return;
   }
 
+  // Master program.
   if (rank == 0) {
     int source;
-
     double start, end;
     // start timer
     start = MPI_Wtime();
@@ -88,12 +96,16 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
     mw_result_t **next_result = result_queue;
     result_queue[0] = NULL;
 
+    // Worker status array.
     unsigned char worker_status[n_proc-1];
+    // Initialize by giving tasks to all workers.
     for (i=1; i<n_proc; i++) {
       SendWork(i, next_job, f->jobs_per_packet, f);
       next_job = get_next_job(next_job, f->jobs_per_packet);
       worker_status[i-1] = BUSY;
     }
+
+    // Loop; give new jobs to workers as they return answers.
     while(1) {
       MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       MPI_Get_count(&status, MPI_UNSIGNED_CHAR, &length);
@@ -121,6 +133,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
         worker_status[source-1] = BUSY;
       }
     }
+    // Done; terminate worker threads and calculate result.
     KillWorkers(n_proc);
     printf("Calculating result.\n");
     if (f->result(result_queue) == 0) {
@@ -131,6 +144,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
     end = MPI_Wtime();
     printf("%f seconds elapsed.\n", end-start);
 
+    // Clean up master data structures.
     if (f->cleanup(work_queue, result_queue)) {
       fprintf(stderr, "Successfully cleaned up memory.\n");
     } else {
@@ -138,6 +152,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
       return;
     }
   } else {
+    // Worker program.
     mw_work_t *work_queue[WORKER_QUEUE_LENGTH];
     mw_work_t **next_job = work_queue;
     mw_result_t *result_queue[WORKER_QUEUE_LENGTH];
@@ -147,6 +162,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
     int count = 0;
 
     while(1) {
+      // Wait for job.
       MPI_Probe(0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       MPI_Get_count(&status, MPI_UNSIGNED_CHAR, &length);
       if (status.MPI_TAG == TAG_KILL) break;
@@ -156,11 +172,13 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
       };
       MPI_Recv(receive_buffer, length, MPI_UNSIGNED_CHAR, 0, TAG_COMPUTE, MPI_COMM_WORLD,
           &status);
+      // Deserialize new jobs.
       if (f->deserialize_work(work_queue, receive_buffer, length) == 0) {
         fprintf(stderr, "Error deserializing work on process %d.\n", rank);
         return;
       }
       free(receive_buffer);
+      // Process new jobs.
       while(*next_job != NULL) {
         *next_result++ = f->compute(*next_job++);
         count++;
@@ -170,6 +188,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
       while(*next_job != NULL) {      // free work structures on finishing calculation.
         free(*next_job++);
       }
+      // Send results to master.
       SendResults(0, result_queue, count, f);
       next_result = result_queue;
       while(*next_result != NULL) {

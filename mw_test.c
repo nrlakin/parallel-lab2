@@ -15,7 +15,6 @@
 // Must be less than max int!
 #define VECTOR_LENGTH 1000000000
 #define N_JOBS  10000
-//#define VECTOR_LENGTH 5
 
 /***
 Given pointer to vector of doubles and vector length, calculate L2 norm
@@ -99,6 +98,11 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
   return job_queue;
 }
 
+// Convert n_jobs job structures into a byte array for transmission to another
+// process.  Because the job structure contains only a pointer to a subarray,
+// this function is responsible for tracking down that pointer and copying its
+// values into the byte array *array.  Should set **array to point to allocated
+// send buffer, *len to point to number of bytes to send.  Returns 1 on success.
 int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char **array, int *len) {
   int i, length=0;
   unsigned char *destPtr;
@@ -129,6 +133,11 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
   return 1;
 }
 
+// Convert received byte array *array back to userdef_work_t structures.  len
+// gives size of received array in bytes; **queue points to next available spot
+// in work queue (if not, it will scan to the end).  Responsible for allocating
+// space for each new work structure, as well as for associated subvectors.
+// Returns 1 on success, 0 on failure.
 int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int len) {
   struct userdef_work_t *jobPtr;
   unsigned char *srcPtr = array;
@@ -155,6 +164,9 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
   return 1;
 }
 
+// Convert n_jobs result structures into a byte array for transmission to another
+// process.  Simpler than serialize_work because the userdef_result_t structure
+// contains the actual result (not just a pointer).
 int serialize_results(struct userdef_result_t **start_result, int n_results, unsigned char **array, int *len) {
   struct userdef_result_t **result = start_result;
   int i, length=0;
@@ -181,6 +193,10 @@ int serialize_results(struct userdef_result_t **start_result, int n_results, uns
   return 1;
 }
 
+// Convert received byte array *array back to userdef_t result structures.  len
+// gives size of received array in bytes; **queue points to next available spot
+// in result queue (if not, it will scan to the end).  Responsible for allocating
+// space for each new result structure.  Returns 1 on success, 0 on failure.
 int deserialize_results(struct userdef_result_t **queue, unsigned char *array, int len) {
   struct userdef_result_t *resultPtr;
   unsigned char *srcPtr = array;
@@ -199,6 +215,8 @@ int deserialize_results(struct userdef_result_t **queue, unsigned char *array, i
   return 1;
 }
 
+// Sums sub-products into final dot product and displays on screen.  Returns 1
+// on success.
 int dot_product_result (struct userdef_result_t **res) {
   double dot_product = 0;
   int i;
@@ -211,6 +229,10 @@ int dot_product_result (struct userdef_result_t **res) {
   return 1;
 }
 
+// Computes dot product of a single vector/sub vector.  Called on worker thread.
+// Returns result structure containing product; responsible for allocating
+// structure.  Frees associated work vector before work structure is freed in
+// API.
 struct userdef_result_t *compute_dot (struct userdef_work_t *work) {
   struct userdef_result_t *result;
   int i;
@@ -224,6 +246,8 @@ struct userdef_result_t *compute_dot (struct userdef_work_t *work) {
   return result;
 }
 
+// Frees work and result structures on master thread.  Called after final
+// result is calculated, immediately before exit.  Returns 1 on success.
 int cleanup(struct userdef_work_t **work, struct userdef_result_t **results) {
   free(work[0]->vector);
   free(work[0]);
@@ -242,6 +266,7 @@ int main(int argc, char **argv) {
 
   MPI_Init(&argc, &argv);
 
+  // Configure API.
   f.create = create_jobs;
   f.result = dot_product_result;
   f.compute = compute_dot;
@@ -252,6 +277,7 @@ int main(int argc, char **argv) {
   f.cleanup = cleanup;
   f.jobs_per_packet = 5;
 
+  // Run job.
   MW_Run(argc, argv, &f);
 
   MPI_Finalize();

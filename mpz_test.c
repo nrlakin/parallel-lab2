@@ -71,7 +71,10 @@ int main(int argc, char **argv) {
   test.rangeEnd = 5;
   work_queue[0] = &test;
   work_queue[1] = NULL;
-  serialize_jobs(work_queue, 1, &target, &length);
+  if(serialize_jobs(work_queue, 1, &target, &length)==0) {
+    printf("serializer returned error...");
+    return 1;
+  }
   printf("serialized length: %d\n", length);
   for(i=0; i<length; i++) {
     printf("%X\n", target[i]);

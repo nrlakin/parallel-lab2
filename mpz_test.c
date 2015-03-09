@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   for(i=0;i<length;i++) {
     printf("%X\n", *target++);
   }
-  free(target);
+  mpz_clear(target);
 
   return 0;
 }

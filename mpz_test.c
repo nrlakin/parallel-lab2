@@ -7,9 +7,9 @@
 int serialize_mpz(mpz_t bignum, unsigned char **dest, int *length) {
   unsigned char *int_count = *dest;
   unsigned char *temp_mpz;
-  unsigned int mpz_size;
-  temp_mpz = mpz_export(NULL, &mpz_size, 1, 1, 0, bignum);
-  printf(mpz_size);
+  size_t mpz_size;
+  temp_mpz = mpz_export(NULL, &mpz_size, 1, 1, 1, 0, bignum);
+  printf("%d\n", (int)mpz_size);
   *dest = temp_mpz;
   *length = mpz_size;
   return 0;

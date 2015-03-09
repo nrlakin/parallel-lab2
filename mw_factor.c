@@ -103,7 +103,7 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
     mpz_size = temp_size;
     srcPtr += sizeof(int);
     //mpz_import(jobPtr->target, mpz_size, ORDER, WORD_SIZE, ENDIAN, NAIL, srcPtr);
-    mpi_init_set_str(jobPtr->target, START_NUM, 10);
+    mpzg_init_set_str(jobPtr->target, START_NUM, 10);
     srcPtr += temp_size;
     memcpy(&(jobPtr->rangeStart), srcPtr, sizeof(sizeof(unsigned long)));
     srcPtr += sizeof(unsigned long);

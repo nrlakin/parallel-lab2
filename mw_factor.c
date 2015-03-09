@@ -153,10 +153,10 @@ int deserialize_results(struct userdef_result_t **queue, unsigned char *array, i
     memcpy(&(resultPtr->length), srcPtr, sizeof(unsigned long));
     srcPtr += sizeof(unsigned long);
     if (NULL == ((resultPtr->factors) = (unsigned long*)malloc(sizeof(unsigned long) * resultPtr->length))) {
-      printf ("malloc failed on allocating vector of len %d\n...", resultPtr->length);
+      printf ("malloc failed on allocating factor of len %d\n...", resultPtr->length);
       return 0;
     };
-    memcpy(resultPtr->vector, srcPtr, resultPtr->length * sizeof(unsigned long));
+    memcpy(resultPtr->factors, srcPtr, resultPtr->length * sizeof(unsigned long));
     srcPtr += resultPtr->length * sizeof(unsigned long);
     *queue++ = resultPtr;
     len-=(resultPtr->length * sizeof(unsigned long)) + sizeof(unsigned long);

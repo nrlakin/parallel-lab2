@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <gmp.h>
 
 #define TEST_NUM  "123456789123456789123456789123456789"
@@ -12,7 +13,7 @@ int serialize_mpz(mpz_t bignum, unsigned char **dest, int *length) {
   temp_mpz = mpz_export(NULL, &mpz_size, 1, 1, 1, 0, bignum);
   len = mpz_size;
   printf("%d\n", (int)mpz_size);
-  *dest = malloc((unsigned char*)(len*sizeof(unsigned char)));
+  *dest = (unsigned char*) malloc(sizeof(unsigned char) * len);
   *length = len;
   memcpy(*dest, temp_mpz, len);
   mpz_clear(temp_mpz);

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <gmp.h>
 
-#define TEST_NUM  "123456789"
+#define TEST_NUM  "123456789123456789123456789123456789"
 
 int serialize_mpz(mpz_t bignum, unsigned char **dest, int *length) {
   unsigned char *int_count = *dest;

@@ -13,15 +13,13 @@
 #include "./mw_api.h"
 #include <gmp.h>
 
-// Must be less than max int!
-#define START_NUM "10000"
-#define N_JOBS  4
+#define START_NUM "10000000"
+#define N_JOBS  6
 
 void printFactors(unsigned long * vec, unsigned long len) {
   int i;
-  printf("Printing Vector:\n");
   for (i=0; i<len; i++) {
-    printf("%lu: %lu\n", i, *vec++);
+    printf("%lu  ", *vec++);
   }
 }
 
@@ -35,6 +33,110 @@ struct userdef_result_t {
   unsigned long length;
   unsigned long *factors;
 };
+
+// int serialize_jobs(struct userdef_job_t **start_job, int n_jobs, unsigned char **array, int *len) {
+//   struct userdef_job_t **job = start_job;
+//   int i, length=0;
+//   unsigned char *destPtr;
+//   for(i = 0; i < n_jobs; i++) {
+//     if (*job == NULL) break;
+//     length += (sizeof(unsigned long) + sizeof(unsigned long) + sizeof(mpz_t));
+//     job++;
+//   }
+//   if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
+//     printf ("malloc failed on send buffer...\n");
+//     return 0;
+//   };
+//   *len = length;
+//   job = start_job;
+//   destPtr = *array;
+//   for(i = 0; i < n_jobs; i++) {
+//     if (*job == NULL) break;
+//     memcpy(destPtr, &((*job)->target), sizeof(mpz_t));
+//     destPtr += sizeof(mpz_t);
+//     memcpy(destPtr, &((*job)->rangeStart), sizeof(unsigned long));
+//     destPtr += sizeof(unsigned long);
+//     memcpy(destPtr, &((*job)->rangeEnd), sizeof(unsigned long));
+//     destPtr += sizeof(unsigned long);
+//     job++;
+//   }
+//   return 0;
+// }
+
+// int deserialize_jobs(struct userdef_job_t **queue, unsigned char *array, int len) {
+//   struct userdef_job_t *jobPtr;
+//   unsigned char *srcPtr = array;
+//   while (NULL != *queue) queue++;
+//   while(len) {
+//     if (NULL == (jobPtr = (struct userdef_job_t*)malloc(sizeof(struct userdef_job_t)))) {
+//       printf ("malloc failed on receive buffer...\n");
+//       return 0;
+//     };
+//     memcpy(&(jobPtr->target), srcPtr, sizeof(mpz_t));
+//     srcPtr += sizeof(mpz_t);
+//     memcpy(&(jobPtr->rangeStart), srcPtr, sizeof(unsigned long));
+//     srcPtr += sizeof(unsigned long);
+//     memcpy(&(jobPtr->rangeEnd), srcPtr, sizeof(unsigned long));
+//     srcPtr += sizeof(unsigned long);
+//     *queue++ = jobPtr;
+//     len-=(sizeof(unsigned long) + sizeof(unsigned long) + sizeof(mpz_t));
+//   }
+//   *queue = NULL;
+//   return 1;
+// }
+
+int serialize_results(struct userdef_result_t **start_result, int n_results, unsigned char **array, int *len) {
+  int i, length=0;
+  unsigned char *destPtr;
+  long result_len;
+  struct userdef_result_t **result = start_result;
+  for(i = 0; i < n_results; i++) {
+    if(*result == NULL) break;
+    length += (sizeof(unsigned long) * (*result)->length) + sizeof(unsigned long);
+    result++;
+  }
+  if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
+    printf ("malloc failed on send buffer...\n");
+    return 0;
+  };
+  *len = length;
+  result = start_result;
+  destPtr = *array;
+  for(i = 0; i < n_results; i++) {
+    if(*result == NULL) break;
+    result_len = (*result)->length;
+    destPtr = memcpy(destPtr, &result_len, sizeof(unsigned long));
+    destPtr += sizeof(unsigned long);
+    destPtr = memcpy(destPtr, (*result)->factors, sizeof(unsigned long) * (*result)->length);
+    destPtr += sizeof(unsigned long) * (*result)->length;
+    result++;
+  }
+  return 1;
+}
+
+int deserialize_results(struct userdef_result_t **queue, unsigned char *array, int len) {
+  struct userdef_result_t *resultPtr;
+  unsigned char *srcPtr = array;
+  while (NULL != *queue) queue++;
+  while(len) {
+    if (NULL == (resultPtr = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t)))) {
+      printf ("malloc failed on alloc result struct...\n");
+      return 0;
+    };
+    memcpy(&(resultPtr->length), srcPtr, sizeof(unsigned long));
+    srcPtr += sizeof(unsigned long);
+    if (NULL == ((resultPtr->factors) = (unsigned long*)malloc(sizeof(unsigned long) * resultPtr->length))) {
+      printf ("malloc failed on allocating vector of len %d\n...", resultPtr->length);
+      return 0;
+    };
+    memcpy(resultPtr->vector, srcPtr, resultPtr->length * sizeof(unsigned long));
+    srcPtr += resultPtr->length * sizeof(unsigned long);
+    *queue++ = resultPtr;
+    len-=(resultPtr->length * sizeof(unsigned long)) + sizeof(unsigned long);
+  }
+  *queue = NULL;
+  return 1;
+}
 
 struct userdef_work_t **create_jobs(int argc, char **argv) {
   struct userdef_work_t **job_queue;
@@ -85,10 +187,12 @@ struct userdef_work_t **create_jobs(int argc, char **argv) {
 }
 
 int userdef_result(struct userdef_result_t **res) {
+  struct userdef_result_t **ptr;
   printf("Received Results:\n");
-  while(*res != NULL) {
-    printFactors((*res)->factors, (*res)->length);
-    res++;
+  ptr = res;
+  while(*ptr != NULL) {
+    printFactors((*ptr)->factors, (*ptr)->length);
+    ptr++;
   }
   return 1;
 }
@@ -141,7 +245,7 @@ unsigned long *getFactors(mpz_t target, unsigned long start, unsigned long end, 
 struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   struct userdef_result_t *result;
   unsigned long length = getFactorLength(work->target, work->rangeStart, work->rangeEnd);
-  if (NULL == (result = (unsigned long*)malloc(sizeof(unsigned long) * (length + 1)))) {
+  if (NULL == (result = (struct userdef_result_t*)malloc(sizeof(struct userdef_result_t) * (length + 1)))) {
     printf("malloc failed on userdef_result...");
     return NULL;
   }
@@ -149,41 +253,75 @@ struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
   result->length = length;
   printf("Length: %lu\n", result->length);
   result->factors = getFactors(work->target, work->rangeStart, work->rangeEnd, result->length);
-  // printFactors(result->factors, result->length);
+  printFactors(result->factors, result->length);
+  printf("Done Printing\n");
   return result;
 }
 
-int cleanup(struct userdef_work_t **work) {
+int cleanup(struct userdef_work_t **work, struct userdef_result_t **res) {
   mpz_clear(work[0]->target);
   free(work[0]);
   free(work);
+
+  struct userdef_result_t **res_ptr;
+  res_ptr = res;
+  while(*res != NULL) {
+    free((*res)->factors);
+    free(*res);
+    res++;
+  }
+  free(res_ptr);
   return 1;
 }
 
 int main(int argc, char **argv) {
   struct mw_api_spec f;
-  struct userdef_work_t **master_queue;
-  struct userdef_work_t *worker_queue[50];
-  double *receive_buffer;
-  int length, i;
-  double *value;
 
   MPI_Init(&argc, &argv);
 
-  f.create = create_jobs;
-  f.result = userdef_result;
-  f.compute = userdef_compute;
-  f.serialize_work = serialize_jobs;
-  f.deserialize_work = deserialize_jobs;
-  f.serialize_results = serialize_results;
-  f.deserialize_results = deserialize_results;
-  f.cleanup = cleanup;
-  f.work_sz = sizeof(struct userdef_work_t);
-  f.res_sz = sizeof(struct userdef_result_t);
+  // start timer
+  // f.create = create_jobs;
+  // f.result = userdef_result;
+  // f.compute = userdef_compute;
+  // f.serialize_work = serialize_jobs;
+  // f.deserialize_work = deserialize_jobs;
+  // f.serialize_results = serialize_results;
+  // f.deserialize_results = deserialize_results;
+  // f.cleanup = cleanup;
+  // f.work_sz = sizeof(struct userdef_work_t);
+  // f.res_sz = sizeof(struct userdef_result_t);
 
-  MW_Run(argc, argv, &f);
+  // MW_Run(argc, argv, &f);
+  // // end timer
 
-  MPI_Finalize();
+  // MPI_Finalize();
+
+  struct userdef_work_t **work;
+  struct userdef_work_t **workptr;
+  struct userdef_result_t **resptr;
+  struct userdef_result_t **result;
+
+  if (NULL == (result = (struct userdef_result_t**)malloc(sizeof(struct userdef_result_t*) * N_JOBS + 1))) {
+    printf("malloc failed on userdef_result...");
+    return NULL;
+  }
+  *result = NULL;
+
+  work = create_jobs(argc, argv);
+  resptr = result;
+  workptr = work;
+
+  while (*work != NULL) {
+    printf("Starting:\n");
+    *result = userdef_compute(*work);
+    printf("Incrementing:\n");
+    work++;
+    result++;
+  }
+  printf("Running result:\n");
+  userdef_result(resptr);
+  printf("Cleaning:\n");
+  cleanup(workptr, resptr);
 
   return 0;
 }

@@ -35,7 +35,7 @@ double norm(double* vec, int len) {
 void printVector(double * vec, int len) {
   int i;
   if(len > 10) return;
-  printf("Vector = %X\n", (unsigned int)vec);
+  //printf("Vector = %X\n", (unsigned int)vec);
   printf("Got:\n");
   for (i=0; i<len; i++) {
     printf("%d: %f\n", i, *vec++);

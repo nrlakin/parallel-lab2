@@ -21,7 +21,7 @@ int get_mpz_length(mpz_t bignum) {
 }
 
 int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char **array, int *len) {
-  unsigned char *destPtr = *array;
+  unsigned char *destPtr;
   unsigned char *temp_mpz;
   struct userdef_work_t **job = start_job;
   size_t mpz_size;
@@ -41,10 +41,12 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
   }
   printf("past malloc\n");
   job = start_job;
+  destPtr = *array;
   *len = length;
   for(i=0; i<n_jobs; i++) {
     if(*job == NULL)break;
     mpz_len = get_mpz_length((*job)->target);
+    printf("mpz_len: %d\n", mpz_len);
     memcpy(destPtr, &mpz_len, sizeof(int));
     destPtr += sizeof(int);
     printf("before mpz_export\n");

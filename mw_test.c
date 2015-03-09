@@ -42,15 +42,20 @@ void printVector(double * vec, int len) {
   }
 }
 
+// Work structure; pointer to array of doubles and int length.
 struct userdef_work_t {
   int length;
   double *vector;
 };
 
+// Result structure; just a wrapper around a double.
 struct userdef_result_t {
   double product;
 };
 
+// 'create' function.  Returns a pointer to an array of pointers
+// to work structures.  Vector is a long array of random doubles between
+// 0 and 1.
 struct userdef_work_t **create_jobs (int argc, char **argv) {
   int i, chunk_size;
   const unsigned int VectorLength = VECTOR_LENGTH; // in case VECTOR_LENGTH is expression
@@ -98,16 +103,18 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
   int i, length=0;
   unsigned char *destPtr;
   struct userdef_work_t **job = start_job;
-
+  // annoying--iterate through pending jobs to calculate size of required buffer.
   for(i = 0; i < n_jobs; i++) {
     if(*job == NULL)break;
     length += (sizeof(double) * (*job)->length) + sizeof(int);
     job++;
   }
+  // allocate send buffer. this is freed by the api after packet is sent.
   if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
     printf ("malloc failed on send buffer...\n");
     return 0;
   };
+  // copy jobs into buffer.  first 32-bit length, then array of doubles.
   *len = length;
   job = start_job;
   destPtr = *array;

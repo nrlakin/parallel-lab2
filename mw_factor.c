@@ -243,7 +243,7 @@ unsigned long getFactorLength(mpz_t target, unsigned long start, unsigned long e
     }
   }
   mpz_clear(mod);
-  printf("Length: %lu\n", length);
+  //printf("Length: %lu\n", length);
   return length;
 }
 
@@ -291,7 +291,9 @@ struct userdef_result_t *userdef_compute(struct userdef_work_t *work) {
 }
 
 int cleanup(struct userdef_work_t **work, struct userdef_result_t **res) {
-  mpz_clear(work[0]->target);
+  struct userdef_work_t **workPtr = work;
+
+  while(*workPtr != NULL)mpz_clear((*workPtr++)->target);
   free(work[0]);
   free(work);
 
@@ -302,7 +304,7 @@ int cleanup(struct userdef_work_t **work, struct userdef_result_t **res) {
     free(*res);
     res++;
   }
-  free(res_ptr);
+  //free(res_ptr);
   return 1;
 }
 

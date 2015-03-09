@@ -14,7 +14,7 @@
 #include <gmp.h>
 
 #define START_NUM "123456789123456789123456789"
-#define N_JOBS  2
+#define N_JOBS  10000
 #define JOBS_PER_PACKET 5
 
 #define WORD_SIZE   1

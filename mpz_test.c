@@ -8,11 +8,13 @@ int serialize_mpz(mpz_t bignum, unsigned char **dest, int *length) {
   unsigned char *int_count = *dest;
   unsigned char *temp_mpz;
   size_t mpz_size;
+  int len;
   temp_mpz = mpz_export(NULL, &mpz_size, 1, 1, 1, 0, bignum);
+  len = mpz_size;
   printf("%d\n", (int)mpz_size);
-  *dest = malloc((unsigned char*)((int)mpz_size)*sizeof(unsigned char));
-  *length = mpz_size;
-  memcpy(*dest, temp_mpz, *length);
+  *dest = malloc((unsigned char*)(len*sizeof(unsigned char)));
+  *length = len;
+  memcpy(*dest, temp_mpz, len);
   mpz_clear(temp_mpz);
   return 0;
 }

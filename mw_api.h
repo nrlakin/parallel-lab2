@@ -21,7 +21,7 @@ struct mw_api_spec {
   int (*deserialize_work) (mw_work_t **queue, unsigned char *array, int len);
   int (*serialize_results) (mw_result_t **start_result, int n_results, unsigned char **array, int *len);
   int (*deserialize_results) (mw_result_t **queue, unsigned char *array, int len);
-  int work_sz, res_sz;
+  int jobs_per_packet;
 };
 
 void MW_Run(int argc, char **argv, struct mw_api_spec *f);

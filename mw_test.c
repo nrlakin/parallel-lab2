@@ -97,12 +97,11 @@ struct userdef_work_t **create_jobs (int argc, char **argv) {
 int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char **array, int *len) {
   int i, length=0;
   unsigned char *destPtr;
-  long job_len;
   struct userdef_work_t **job = start_job;
 
   for(i = 0; i < n_jobs; i++) {
     if(*job == NULL)break;
-    length += (sizeof(double) * (*job)->length) + sizeof(long);
+    length += (sizeof(double) * (*job)->length) + sizeof(int);
     job++;
   }
   if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
@@ -114,9 +113,8 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
   destPtr = *array;
   for(i = 0; i < n_jobs; i++) {
     if(*job == NULL) break;
-    job_len = (*job)->length;
-    destPtr = memcpy(destPtr, &job_len, sizeof(long));
-    destPtr += sizeof(long);
+    destPtr = memcpy(destPtr, &((*job)->length), sizeof(long));
+    destPtr += sizeof(int);
     destPtr = memcpy(destPtr, (*job)->vector, sizeof(double) * (*job)->length);
     destPtr += sizeof(double) * (*job)->length;
     job++;
@@ -127,16 +125,14 @@ int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char 
 int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int len) {
   struct userdef_work_t *jobPtr;
   unsigned char *srcPtr = array;
-  long templong;
   while (NULL != *queue)queue++;
   while(len) {
     if (NULL == (jobPtr = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t)))) {
       printf ("malloc failed on alloc job struct...\n");
       return 0;
     };
-    memcpy(&templong, srcPtr, sizeof(long));
-    srcPtr += sizeof(long);
-    jobPtr->length = templong;
+    memcpy(&(jobPtr->length), srcPtr, sizeof(int));
+    srcPtr += sizeof(int);
     if (NULL == ((jobPtr->vector) = (double*)malloc(sizeof(double) * jobPtr->length))) {
       printf ("malloc failed on allocating vector of len %d\n...", jobPtr->length);
       return 0;
@@ -144,7 +140,7 @@ int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int le
     memcpy(jobPtr->vector, srcPtr, jobPtr->length * sizeof(double));
     srcPtr += jobPtr->length * sizeof(double);
     *queue++ = jobPtr;
-    len-=(jobPtr->length * sizeof(double)) + sizeof(long);
+    len-=(jobPtr->length * sizeof(double)) + sizeof(int);
   }
   *queue = NULL;
   return 1;
@@ -245,8 +241,7 @@ int main(int argc, char **argv) {
   f.serialize_results = serialize_results;
   f.deserialize_results = deserialize_results;
   f.cleanup = cleanup;
-  f.work_sz = sizeof(struct userdef_work_t);
-  f.res_sz = sizeof(struct userdef_result_t);
+  f.jobs_per_packet = 5;
 
   MW_Run(argc, argv, &f);
 

@@ -16,6 +16,11 @@
 #define START_NUM "10000000"
 #define N_JOBS  6
 
+#define WORD_SIZE   1
+#define ENDIAN      1
+#define NAIL        0
+#define ORDER       1
+
 void printFactors(unsigned long * vec, unsigned long len) {
   int i;
   for (i=0; i<len; i++) {
@@ -34,56 +39,77 @@ struct userdef_result_t {
   unsigned long *factors;
 };
 
-// int serialize_jobs(struct userdef_job_t **start_job, int n_jobs, unsigned char **array, int *len) {
-//   struct userdef_job_t **job = start_job;
-//   int i, length=0;
-//   unsigned char *destPtr;
-//   for(i = 0; i < n_jobs; i++) {
-//     if (*job == NULL) break;
-//     length += (sizeof(unsigned long) + sizeof(unsigned long) + sizeof(mpz_t));
-//     job++;
-//   }
-//   if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
-//     printf ("malloc failed on send buffer...\n");
-//     return 0;
-//   };
-//   *len = length;
-//   job = start_job;
-//   destPtr = *array;
-//   for(i = 0; i < n_jobs; i++) {
-//     if (*job == NULL) break;
-//     memcpy(destPtr, &((*job)->target), sizeof(mpz_t));
-//     destPtr += sizeof(mpz_t);
-//     memcpy(destPtr, &((*job)->rangeStart), sizeof(unsigned long));
-//     destPtr += sizeof(unsigned long);
-//     memcpy(destPtr, &((*job)->rangeEnd), sizeof(unsigned long));
-//     destPtr += sizeof(unsigned long);
-//     job++;
-//   }
-//   return 0;
-// }
+int get_mpz_length(mpz_t bignum) {
+  int numb = 8 * WORD_SIZE - NAIL;
+  return (mpz_sizeinbase(bignum, 2) + numb-1)/numb;
+}
 
-// int deserialize_jobs(struct userdef_job_t **queue, unsigned char *array, int len) {
-//   struct userdef_job_t *jobPtr;
-//   unsigned char *srcPtr = array;
-//   while (NULL != *queue) queue++;
-//   while(len) {
-//     if (NULL == (jobPtr = (struct userdef_job_t*)malloc(sizeof(struct userdef_job_t)))) {
-//       printf ("malloc failed on receive buffer...\n");
-//       return 0;
-//     };
-//     memcpy(&(jobPtr->target), srcPtr, sizeof(mpz_t));
-//     srcPtr += sizeof(mpz_t);
-//     memcpy(&(jobPtr->rangeStart), srcPtr, sizeof(unsigned long));
-//     srcPtr += sizeof(unsigned long);
-//     memcpy(&(jobPtr->rangeEnd), srcPtr, sizeof(unsigned long));
-//     srcPtr += sizeof(unsigned long);
-//     *queue++ = jobPtr;
-//     len-=(sizeof(unsigned long) + sizeof(unsigned long) + sizeof(mpz_t));
-//   }
-//   *queue = NULL;
-//   return 1;
-// }
+int serialize_jobs(struct userdef_work_t **start_job, int n_jobs, unsigned char **array, int *len) {
+  unsigned char *destPtr;
+  unsigned char *temp_mpz;
+  struct userdef_work_t **job = start_job;
+  size_t mpz_size;
+  int i, mpz_len, length = 0;
+  for(i=0; i<n_jobs; i++) {
+    if(*job == NULL) break;
+    length += sizeof(int);    //for mpz size
+    length += get_mpz_length((*job)->target);
+    length += 2*sizeof(unsigned long);  //for start/end
+    job++;
+  }
+  if (NULL == (*array = (unsigned char*)malloc(sizeof(unsigned char) * length))) {
+    printf("malloc failed on allocating send buffer\n");
+    return 0;
+  }
+  job = start_job;
+  destPtr = *array;
+  *len = length;
+  for(i=0; i<n_jobs; i++) {
+    if(*job == NULL)break;
+    mpz_len = get_mpz_length((*job)->target);
+    memcpy(destPtr, &mpz_len, sizeof(int));
+    destPtr += sizeof(int);
+    mpz_export(destPtr, &mpz_size, ORDER, WORD_SIZE, ENDIAN, NAIL, (*job)->target);
+    if (mpz_len != mpz_size) {
+      printf("mpz error--different functions report different sizes.\n");
+      return 0;
+    }
+    destPtr += mpz_len;
+    memcpy(destPtr, &((*job)->rangeStart), sizeof(unsigned long));
+    destPtr += sizeof(unsigned long);
+    memcpy(destPtr, &((*job)->rangeEnd), sizeof(unsigned long));
+    destPtr += sizeof(unsigned long);
+    job++;
+  }
+  return 1;
+}
+
+int deserialize_jobs(struct userdef_work_t **queue, unsigned char *array, int len) {
+  struct userdef_work_t *jobPtr;
+  unsigned char *srcPtr = array;
+  size_t mpz_size;
+  int temp_size;
+  while (NULL != *queue)queue++;
+  while(len) {
+    if (NULL == (jobPtr = (struct userdef_work_t*)malloc(sizeof(struct userdef_work_t)))) {
+      printf ("malloc failed on receive buffer...\n");
+      return 0;
+    };
+    memcpy(&temp_size, srcPtr, sizeof(int));
+    mpz_size = temp_size;
+    srcPtr += sizeof(int);
+    mpz_import(jobPtr->target, mpz_size, ORDER, WORD_SIZE, ENDIAN, NAIL, srcPtr);
+    srcPtr += temp_size;
+    memcpy(&(jobPtr->rangeStart), srcPtr, sizeof(sizeof(unsigned long)));
+    srcPtr += sizeof(unsigned long);
+    memcpy(&(jobPtr->rangeEnd), srcPtr, sizeof(sizeof(unsigned long)));
+    srcPtr += sizeof(unsigned long);
+    *queue++ = jobPtr;
+    len-= sizeof(int) + temp_size + 2*sizeof(unsigned long);
+  }
+  *queue = NULL;
+  return 1;
+}
 
 int serialize_results(struct userdef_result_t **start_result, int n_results, unsigned char **array, int *len) {
   int i, length=0;
@@ -280,48 +306,48 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
 
   // start timer
-  // f.create = create_jobs;
-  // f.result = userdef_result;
-  // f.compute = userdef_compute;
-  // f.serialize_work = serialize_jobs;
-  // f.deserialize_work = deserialize_jobs;
-  // f.serialize_results = serialize_results;
-  // f.deserialize_results = deserialize_results;
-  // f.cleanup = cleanup;
-  // f.work_sz = sizeof(struct userdef_work_t);
-  // f.res_sz = sizeof(struct userdef_result_t);
+  f.create = create_jobs;
+  f.result = userdef_result;
+  f.compute = userdef_compute;
+  f.serialize_work = serialize_jobs;
+  f.deserialize_work = deserialize_jobs;
+  f.serialize_results = serialize_results;
+  f.deserialize_results = deserialize_results;
+  f.cleanup = cleanup;
+  f.work_sz = sizeof(struct userdef_work_t);
+  f.res_sz = sizeof(struct userdef_result_t);
 
-  // MW_Run(argc, argv, &f);
-  // // end timer
+  MW_Run(argc, argv, &f);
+  // end timer
 
-  // MPI_Finalize();
+  MPI_Finalize();
 
-  struct userdef_work_t **work;
-  struct userdef_work_t **workptr;
-  struct userdef_result_t **resptr;
-  struct userdef_result_t **result;
+  // struct userdef_work_t **work;
+  // struct userdef_work_t **workptr;
+  // struct userdef_result_t **resptr;
+  // struct userdef_result_t **result;
 
-  if (NULL == (result = (struct userdef_result_t**)malloc(sizeof(struct userdef_result_t*) * N_JOBS + 1))) {
-    printf("malloc failed on userdef_result...");
-    return NULL;
-  }
-  *result = NULL;
+  // if (NULL == (result = (struct userdef_result_t**)malloc(sizeof(struct userdef_result_t*) * N_JOBS + 1))) {
+  //   printf("malloc failed on userdef_result...");
+  //   return NULL;
+  // }
+  // *result = NULL;
 
-  work = create_jobs(argc, argv);
-  resptr = result;
-  workptr = work;
+  // work = create_jobs(argc, argv);
+  // resptr = result;
+  // workptr = work;
 
-  while (*work != NULL) {
-    printf("Starting:\n");
-    *result = userdef_compute(*work);
-    printf("Incrementing:\n");
-    work++;
-    result++;
-  }
-  printf("Running result:\n");
-  userdef_result(resptr);
-  printf("Cleaning:\n");
-  cleanup(workptr, resptr);
+  // while (*work != NULL) {
+  //   printf("Starting:\n");
+  //   *result = userdef_compute(*work);
+  //   printf("Incrementing:\n");
+  //   work++;
+  //   result++;
+  // }
+  // printf("Running result:\n");
+  // userdef_result(resptr);
+  // printf("Cleaning:\n");
+  // cleanup(workptr, resptr);
 
-  return 0;
+  // return 0;
 }

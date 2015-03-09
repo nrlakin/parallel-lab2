@@ -16,7 +16,7 @@ int serialize_mpz(mpz_t bignum, unsigned char **dest, int *length) {
   *dest = (unsigned char*) malloc(sizeof(unsigned char) * len);
   *length = len;
   memcpy(*dest, temp_mpz, len);
-  mpz_clear(temp_mpz);
+  free(temp_mpz);
   return 0;
 }
 
@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
   for(i=0;i<length;i++) {
     printf("%X\n", *target++);
   }
+  mpz_clear(test);
   free(target);
   return 0;
 }

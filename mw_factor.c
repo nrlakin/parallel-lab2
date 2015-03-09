@@ -304,7 +304,7 @@ int cleanup(struct userdef_work_t **work, struct userdef_result_t **res) {
     free(*res);
     res++;
   }
-  free(res_ptr);
+  //free(res_ptr);
   return 1;
 }
 

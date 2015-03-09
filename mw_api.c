@@ -152,6 +152,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
         *next_result++ = f->compute(*next_job++);
         count++;
       }
+      *next_result=NULL;
       next_job = work_queue;
       int jobcount = 0;
       while(*next_job != NULL) {
@@ -165,7 +166,7 @@ void MW_Run(int argc, char **argv, struct mw_api_spec *f) {
       int resultcount = 0;
       while(*next_result != NULL) {
         resultcount++;
-        printf("job resultcount...%i\n", resultcount);
+        printf("result resultcount...%i\n", resultcount);
         printf("freeing *next_result...\n", *next_result);
         free(*next_result++);
       }
